@@ -1,0 +1,21 @@
+name: trajectories
+channels:
+  - conda-forge
+  - defaults
+  - dglteam
+dependencies:
+  - joblib
+  - matplotlib
+  - pandas
+  - python=3.9
+  - pyyaml
+  - seaborn
+  - matplotlib
+  - pyarrow
+  - fastparquet
+  - pip
+  - e3nn
+  - pytorch
+  - dgl
+
+
