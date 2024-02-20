@@ -2,6 +2,7 @@
 import numpy as np
 import math
 import random
+import features as ft
 
 def add(a, b):
     return a + b
@@ -30,7 +31,7 @@ def separate_trajectories(data):
         if track_id not in trajectories:
             trajectories[track_id] = []
 
-        trajectories[track_id].append((x, y))
+        trajectories[track_id].append((frame, x, y))
 
     return list(trajectories.values())
 
@@ -64,7 +65,7 @@ def mask_point_at_index(data, index):
 
             masked_points.append(trajectory[index])
 
-            modified_sublist[index] = (0,0) ## how should we do this masking? 
+            modified_sublist[index] = (0,0) ## how should we do this masking?  change to none later
 
             masked_data.append(modified_sublist)
 
@@ -152,3 +153,56 @@ def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0):
             points.append((new_x, new_y))
     
     return points
+
+def listTrim (data, index):
+    """
+    
+    """
+    output_list = data[:index]
+    return output_list
+
+def cut_frame_data (data):
+
+    for index in range(len(data)):
+        trajectory = data[index]
+        for element in range(len(trajectory)):
+            t1, t2, t3 = trajectory[element]
+            trajectory[element] = (t2, t3)
+
+    return data
+
+def separate_data (data):
+    """
+    This method sepeartes the givne trajecory into 3 arrrays of
+    frame, x and y
+
+    Parameters:
+    data (list): the list of all points collected
+
+    Returns:
+    list: a new double list that will have each trajectory sperated. 
+
+    Requires:
+    data to be in format of: [(track id, frame, x, y), ...]
+    """
+    frame = []
+    x = []
+    y = []
+    for index in range(len(data)):
+        t0, t1, t2, t3 = data[index]
+        frame.append(t1)
+        x.append(t2)
+        y.append(t3)
+
+    return frame, x, y
+## cut the length array to a fixed length
+
+## diff clasifer - diff clasifer - features.py -> alpha calc.
+
+
+## reocnsutrction loss -?
+## compression 0 loss, aaproximatiation 
+# alpha being the trajectory of the data
+
+## alpha mean squared derivation coeeftion , alpha about 1 is increasing.
+## 

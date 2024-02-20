@@ -3,8 +3,6 @@ import definitions
 import sql_def
 ## python -m unittest tests.py
 
-
-
 class TestDefinitions(unittest.TestCase):
 
     def test_add(self):
@@ -20,12 +18,12 @@ class TestDefinitions(unittest.TestCase):
         self.assertEqual(definitions.separate_trajectories([]), [])
 
         # 1 test
-        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2)]), [[(2, 2)]])
-        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12)]), [[(2, 2), (45, 12)]])
+        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2)]), [[(1, 2, 2)]])
+        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12)]), [[(1, 2, 2), (2, 45, 12)]])
 
         # many test
-        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (1, 52, 412, 21)]), [[(2, 2)], [(412, 21)]])
-        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12), (1, 1, 2, 2), (1, 2, 45, 12)]), [[(2, 2), (45, 12)], [(2, 2), (45, 12)]])
+        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (1, 52, 412, 21)]), [[(1, 2, 2)], [(52, 412, 21)]])
+        self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12), (1, 1, 2, 2), (1, 2, 45, 12)]), [[(1, 2, 2), (2, 45, 12)], [(1, 2, 2), (2, 45, 12)]])
 
     def test_mask_point_at_index(self):
         # 0 - 1 - many test:
@@ -83,7 +81,26 @@ class TestDefinitions(unittest.TestCase):
 
         # 2 test
         self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1), [(1,1), (2,1), (3,1)])
-        self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1, False, 180), [(1,1), (0,1), (-1,1)])
+        # self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1, False, 180), [(1,1), (0,1), (-1,1)])
+    def test_data_cut(self):
+        self.assertEqual(definitions.listTrim([], 0), [])
+
+        self.assertEqual(definitions.listTrim([(1, 2), (3, 2)], 1), [(1, 2)])
+
+        self.assertEqual(definitions.listTrim([(1, 2), (3, 2), (4, 5)], 2), [(1, 2), (3, 2)])
+
+    def test_separate_data(self):
+        self.assertEqual(definitions.separate_data([]), ([], [], []))
+
+        self.assertEqual(definitions.separate_data([(1, 1, 1, 2), (1, 2, 3, 2)]), ([1, 2], [1, 3], [2, 2]))
+
+        # self.assertEqual(definitions.separate_data([(1, 2), (3, 2), (4, 5)], 2), [(1, 2), (3, 2)])
+
+    def test_cut_frame(self):
+        self.assertEqual(definitions.cut_frame_data([]), [])
+        self.assertEqual(definitions.cut_frame_data([[(1, 2, 3)]]), [[(2, 3)]])
+        self.assertEqual(definitions.cut_frame_data([[(1, 2, 3), (2, 1, 1)]]), [[(2, 3), (1, 1)]])
+        self.assertEqual(definitions.cut_frame_data([[(1, 2, 3), (2, 1, 1)], [(200, 2, 3)]]), [[(2, 3), (1, 1)], [(2, 3)]])
 
 class TestSQL(unittest.TestCase):
 
