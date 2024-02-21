@@ -2,16 +2,18 @@ import features as ft
 import msd as msd
 import pandas as pd
 import numpy as np
-import definitions as df
+import definitions
 
 def list_calculate (trajectory):
-    frame, x, y = 
-    data1 = {'Frame': frame,
+    frame, data_x, data_y = definitions.separate_data(trajectory)
+    frames = len(frame)
+    data1 = {'Frame': np.linspace(1, frames, frames),
              'X': data_x,
              'Y': data_y}
-    df = pd.DataFrame(data=data1)
-    new_track = msd.msd_calc(df, len(frame))
-    ft.alpha_calc(new_track)
+    dframe = pd.DataFrame(data=data1)
+    dframe = msd.msd_calc(dframe, frames)
+    res, trash = ft.alpha_calc(dframe)
+    return res
 
 
 

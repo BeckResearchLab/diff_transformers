@@ -92,7 +92,7 @@ class TestDefinitions(unittest.TestCase):
     def test_separate_data(self):
         self.assertEqual(definitions.separate_data([]), ([], [], []))
 
-        self.assertEqual(definitions.separate_data([(1, 1, 1, 2), (1, 2, 3, 2)]), ([1, 2], [1, 3], [2, 2]))
+        self.assertEqual(definitions.separate_data([(1, 1, 2), (2, 3, 2)]), ([1, 2], [1, 3], [2, 2]))
 
         # self.assertEqual(definitions.separate_data([(1, 2), (3, 2), (4, 5)], 2), [(1, 2), (3, 2)])
 

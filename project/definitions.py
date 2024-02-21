@@ -26,13 +26,13 @@ def separate_trajectories(data):
     """
     trajectories = {}
     # {Inv: len[data_0] = len(trajectories[0 to i]) + len(data[i to n])}
-    for track_id, frame, x, y in data:
+    for pos in data:
+        exp, sl, vid, track_id, frame, x, y = pos
+        key = f"{exp}_{sl}_{vid}_{track_id}"
+        if key not in trajectories:
+            trajectories[key] = []
 
-        if track_id not in trajectories:
-            trajectories[track_id] = []
-
-        trajectories[track_id].append((frame, x, y))
-
+        trajectories[key].append((frame, x, y))
     return list(trajectories.values())
 
 
@@ -171,6 +171,15 @@ def cut_frame_data (data):
 
     return data
 
+def calculate_avg (data):
+    sum = 0
+    for values in data:
+        sum += values
+
+    return sum / len(data)
+
+
+
 def separate_data (data):
     """
     This method sepeartes the givne trajecory into 3 arrrays of
@@ -189,7 +198,7 @@ def separate_data (data):
     x = []
     y = []
     for index in range(len(data)):
-        t0, t1, t2, t3 = data[index]
+        t1, t2, t3 = data[index]
         frame.append(t1)
         x.append(t2)
         y.append(t3)
