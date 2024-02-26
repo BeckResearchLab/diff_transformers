@@ -1,5 +1,5 @@
-import features as ft
-import msd as msd
+import diff_classifier.features as ft
+import diff_classifier.msd as msd
 import pandas as pd
 import numpy as np
 import definitions

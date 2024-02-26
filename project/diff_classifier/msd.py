@@ -15,7 +15,7 @@ import scipy.stats as stats
 from scipy import interpolate
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
-import aws as aws
+import diff_classifier.aws as aws
 from scipy.ndimage.morphology import distance_transform_edt as eudist
 
 

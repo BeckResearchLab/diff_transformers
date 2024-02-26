@@ -15,7 +15,7 @@ import numpy.linalg as LA
 import numpy.ma as ma
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-import msd as msd
+import diff_classifier.msd as msd
 
 
 def unmask_track(track):
