@@ -30,7 +30,7 @@ if __name__ == "__main__":
     os.chdir(path_to_code)
     print()
     data_with_frame = df.separate_trajectories(trajectories)
-    print(df.find_max_length(data_with_frame))
+    print(len(data_with_frame))
 
     cutoff = df.find_min_length(data_with_frame)
     end = df.find_max_length(data_with_frame)
@@ -39,10 +39,10 @@ if __name__ == "__main__":
     for track in data_with_frame:    
             temp = dm.list_calculate(track)
             if (isinstance(temp, np.float64)):
-                full_list.append(temp)                                                    
+                full_list.append(temp)                      
+                              
     final_result = []
     while (cutoff <= end):
-
         temp_res = []
         print("started on " + str(cutoff))
 
