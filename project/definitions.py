@@ -205,12 +205,12 @@ def separate_data (data):
     return frame, x, y
 
 
-def plot_points (data):
+def plot_points (data, name):
     print(len(data))
     index = np.linspace(1, len(data), num=len(data))
     print(len(index))
     plt.plot(index, data, 'o')
-    plt.show()
+    plt.savefig(name)
 ## cut the length array to a fixed length
 
 ## diff clasifer - diff clasifer - features.py -> alpha calc.
