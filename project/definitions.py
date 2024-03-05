@@ -114,46 +114,91 @@ def find_max_length(data):
 
     return max_length
 
-def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0):
+
+
+def rotate_point(x, y, angle_degrees, origin=(0, 0)):
     """
-    returns a straight line trajectory in a x-y matrix
+    Rotate a point counterclockwise by a given angle around a given origin.
 
     Parameters:
-    length (list): number of points in a list
-    x (int): starting x position of line
-    y (int): starting y position of line
-    m (int): amount of space between the points
-    r (boolean): if rotation is enabled or not
-    theta (int): degree of rotation (for testing purposes)
+    x, y (float): the point to rotate.
+    angle_degrees (float): the angle of rotation in degrees.
+    origin (tuple): the point around which to rotate.
+
     Returns:
-    list: a list of points that make up a line
+    tuple: the rotated point.
     """
-    if (length == 0):
-        return []
+    angle_radians = math.radians(angle_degrees)
+    ox, oy = origin
+    qx = ox + math.cos(angle_radians) * (x - ox) - math.sin(angle_radians) * (y - oy)
+    qy = oy + math.sin(angle_radians) * (x - ox) + math.cos(angle_radians) * (y - oy)
+    return qx, qy
+
+def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0, decimals=6):
+    """
+    Returns a straight line trajectory in an x-y matrix.
+
+    Parameters:
+    length (int): number of points in the trajectory.
+    x (int): starting x position of line.
+    y (int): starting y position of line.
+    m (int): amount of space between the points.
+    r (boolean): if rotation is enabled or not.
+    rotation_val (int): degree of rotation (for testing purposes).
+
+    Returns:
+    list: a list of points that make up a line.
+    """
+    trajectory = []
+    for i in range(length):
+        point = (x + i * m, y)
+        if r:
+            point = rotate_point(point[0], point[1], rotation_val, origin=(x, y))
+        # Round the point to the specified number of decimals
+        point = (round(point[0], decimals), round(point[1], decimals))
+        trajectory.append(point)
+    return trajectory
+
+# def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0):
+#     """
+#     returns a straight line trajectory in a x-y matrix
+
+#     Parameters:
+#     length (list): number of points in a list
+#     x (int): starting x position of line
+#     y (int): starting y position of line
+#     m (int): amount of space between the points
+#     r (boolean): if rotation is enabled or not
+#     theta (int): degree of rotation (for testing purposes)
+#     Returns:
+#     list: a list of points that make up a line
+#     """
+#     if (length == 0):
+#         return []
     
 
-    points = [(x, y)]
-    theta = 0
+#     points = [(x, y)]
+#     theta = 0
 
-    if(rotation_val == 0): 
-        if (r):
-            theta = math.radians(random.uniform(0, 360))
-    else:
-        print("we are here?")
-        theta = math.radians(rotation_val)
-        print(theta)
+#     if(rotation_val == 0): 
+#         if (r):
+#             theta = math.radians(random.uniform(0, 360))
+#     else:
+#         print("we are here?")
+#         theta = math.radians(rotation_val)
+#         print(theta)
 
-    for i in range(1, length):
-        new_x = (m * i) + x
-        new_y = y
-        if(r or rotation_val != 0):
-            rotated_x = new_x * math.cos(theta) - new_y * math.sin(theta)
-            rotated_y = new_x * math.sin(theta) + new_y * math.cos(theta)
-            points.append((rotated_x, rotated_y))
-        else:
-            points.append((new_x, new_y))
+#     for i in range(1, length):
+#         new_x = (m * i) + x
+#         new_y = y
+#         if(r or rotation_val != 0):
+#             rotated_x = new_x * math.cos(theta) - new_y * math.sin(theta)
+#             rotated_y = new_x * math.sin(theta) + new_y * math.cos(theta)
+#             points.append((rotated_x, rotated_y))
+#         else:
+#             points.append((new_x, new_y))
     
-    return points
+#     return points
 
 def listTrim (data, index):
     """
