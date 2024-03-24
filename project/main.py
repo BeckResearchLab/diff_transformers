@@ -11,17 +11,7 @@ def main():
 def plot(data):
     df.plot_points(data)
 
-
-if __name__ == "__main__":
-    path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
-    path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
-    os.chdir(path_to_database)
-    trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA")
-    os.chdir(path_to_code)
-    print()
-    data_with_frame = df.separate_trajectories(trajectories)
-    print(len(data_with_frame))
-
+def calculate_mass_alpha(data_with_frame):
     cutoff = df.find_min_length(data_with_frame)
     end = df.find_max_length(data_with_frame)
     
@@ -49,6 +39,14 @@ if __name__ == "__main__":
         final_result.append(df.calculate_avg(temp_res))
         cutoff = cutoff + 1
 
-    plot(final_result, "final_result.png")
-    FD.save_data("finalResult.txt", final_result)
-    FD.save_data("Full_n.txt", df.calculate_avg(full_list))
+        plot(final_result, "final_result.png")
+        FD.save_data("finalResult.txt", final_result)
+        FD.save_data("Full_n.txt", df.calculate_avg(full_list))
+
+if __name__ == "__main__":
+    path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
+    path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
+    os.chdir(path_to_database)
+    trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA")
+    os.chdir(path_to_code)
+    data_with_frame = df.separate_trajectories(trajectories)

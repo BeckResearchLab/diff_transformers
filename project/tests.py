@@ -11,19 +11,57 @@ class TestDefinitions(unittest.TestCase):
     def test_subtract(self):
         self.assertEqual(definitions.subtract(5, 3), 2)
 
-    # def test_seperate_trajectory(self):
-        # # 0 - 1 - many test:
+    def test_seperate_trajectory(self):
+        self.assertEqual(definitions.separate_trajectories([]), [])
 
-        # # 0 test
-        # self.assertEqual(definitions.separate_trajectories([]), [])
+        self.assertEqual(
+            definitions.separate_trajectories([
+                ('exp1', 'sl1', 'vid1', 'track1', 1, 10, 10),
+                ('exp1', 'sl1', 'vid1', 'track1', 2, 20, 20),
+                ('exp1', 'sl1', 'vid1', 'track1', 3, 30, 30)
+            ]),
+            [[(1, 10, 10), (2, 20, 20), (3, 30, 30)]]
+        )
 
-        # # 1 test
-        # self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2)]), [[(1, 2, 2)]])
-        # self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12)]), [[(1, 2, 2), (2, 45, 12)]])
+        self.assertEqual(
+            definitions.separate_trajectories([
+                ('exp1', 'sl1', 'vid1', 'track1', 1, 10, 10),
+                ('exp1', 'sl1', 'vid1', 'track2', 1, 15, 15),
+                ('exp1', 'sl1', 'vid1', 'track1', 2, 20, 20),
+                ('exp1', 'sl1', 'vid1', 'track2', 2, 25, 25)
+            ]),
+            [[(1, 10, 10), (2, 20, 20)], [(1, 15, 15), (2, 25, 25)]]
+        )
 
-        # # many test
-        # self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (1, 52, 412, 21)]), [[(1, 2, 2)], [(52, 412, 21)]])
-        # self.assertEqual(definitions.separate_trajectories([(0, 1, 2, 2), (0, 2, 45, 12), (1, 1, 2, 2), (1, 2, 45, 12)]), [[(1, 2, 2), (2, 45, 12)], [(1, 2, 2), (2, 45, 12)]])
+        self.assertEqual(
+           definitions.separate_trajectories([
+                ('exp1', 'sl1', 'vid1', 'track1', 1, 10, 10),
+                ('exp2', 'sl2', 'vid2', 'track1', 1, 50, 50),
+                ('exp1', 'sl1', 'vid1', 'track1', 2, 20, 20),
+                ('exp2', 'sl2', 'vid2', 'track1', 2, 60, 60)
+            ]),
+            [[(1, 10, 10), (2, 20, 20)], [(1, 50, 50), (2, 60, 60)]]
+        )
+
+        self.assertEqual(
+            definitions.separate_trajectories([
+                ('exp1', 'sl1', 'vid1', 'track1', 2, 20, 20),
+                ('exp1', 'sl1', 'vid1', 'track1', 1, 10, 10),
+                ('exp1', 'sl1', 'vid1', 'track1', 3, 30, 30)
+            ]),
+            [[(2, 20, 20), (1, 10, 10), (3, 30, 30)]]
+        )
+
+        self.assertEqual(
+            definitions.separate_trajectories([
+                ('exp1', 'sl1', 'vid1', 'track1', 1, 10, 10),
+                ('exp1', 'sl1', 'vid2', 'track1', 1, 50, 50),
+                ('exp1', 'sl1', 'vid1', 'track1', 2, 20, 20),
+                ('exp1', 'sl1', 'vid2', 'track1', 2, 60, 60)
+            ]),
+            [[(1, 10, 10), (2, 20, 20)], [(1, 50, 50), (2, 60, 60)]]
+        )
+
 
     def test_mask_point_at_index(self):
         # 0 - 1 - many test:
@@ -68,20 +106,50 @@ class TestDefinitions(unittest.TestCase):
         self.assertEqual(definitions.find_max_length([[(2, 2), (2, 2), (2, 2), (2, 2)], [(1, 1), (1, 1)], [(1, 1), (1, 1), (1, 1)]]), 4)
 
     def test_line_generator(self):
-        # 0 - 1 - many test:
-
-        # 0 test
+        # Test cases for length = 0 with default parameters
         self.assertEqual(definitions.random_trajectory_straight(0), [])
-        self.assertEqual(definitions.random_trajectory_straight(0, 2, 3, 10, True), [])
 
-        # 1 test
-        self.assertEqual(definitions.random_trajectory_straight(1, 1, 1, 1), [(1,1)])
-        self.assertEqual(definitions.random_trajectory_straight(1, 2, 13, 1), [(2,13)])
-        self.assertEqual(definitions.random_trajectory_straight(1, 2, 13, 1, True), [(2,13)])
+        # Test cases for length = 0 with non-default parameters, including rotation
+        self.assertEqual(definitions.random_trajectory_straight(0, 2, 3, 10, True, 45), [])
+        self.assertEqual(definitions.random_trajectory_straight(0, -1, 4, 5, True, 30), [])
 
-        # 2 test
-        self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1), [(1,1), (2,1), (3,1)])
-        # self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1, False, 180), [(1,1), (0,1), (-1,1)])
+        # Test cases for length = 1 with default parameters
+        self.assertEqual(definitions.random_trajectory_straight(1), [(0, 0)])
+        self.assertEqual(definitions.random_trajectory_straight(1), [(0, 0)])
+
+        # Test cases for length = 1 with varying start positions and no rotation
+        self.assertEqual(definitions.random_trajectory_straight(1, 1, 1), [(1, 1)])
+        self.assertEqual(definitions.random_trajectory_straight(1, 3, -2), [(3, -2)])
+
+        # Test case for length = 1 with rotation enabled, but should have no effect as it's a single point
+        self.assertEqual(definitions.random_trajectory_straight(1, 2, 3, 1, True, 90), [(2, 3)])
+        self.assertEqual(definitions.random_trajectory_straight(1, 0, 5, 1, True, 45), [(0, 5)])
+
+        # Test cases for length > 1 with default parameters (no rotation)
+        self.assertEqual(definitions.random_trajectory_straight(3, 0, 0, 1), [(0, 0), (1, 0), (2, 0)])
+        self.assertEqual(definitions.random_trajectory_straight(3, 0, 0, 1), [(0, 0), (1, 0), (2, 0)])
+
+        # Test cases for length > 1 with non-default parameters, including spacing
+        self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 2), [(1, 1), (3, 1), (5, 1)])
+        self.assertEqual(definitions.random_trajectory_straight(3, 2, 2, 3), [(2, 2), (5, 2), (8, 2)])
+
+        # Test cases for length > 1 with rotation enabled, assuming rotation should affect the trajectory
+        self.assertEqual(definitions.random_trajectory_straight(3, 1, 1, 1, True, 90), [(1, 1), (1, 2), (1, 3)])
+        self.assertEqual(definitions.random_trajectory_straight(3, 2, 2, 1, True, 180), [(2.0, 2.0), (1.0, 2.0), (0.0, 2.0)])
+
+        # Test cases for length > 1 with negative spacing, ensuring the function can handle negative increments
+        self.assertEqual(definitions.random_trajectory_straight(3, 5, 5, -1), [(5, 5), (4, 5), (3, 5)])
+        self.assertEqual(definitions.random_trajectory_straight(3, 6, 4, -2), [(6, 4), (4, 4), (2, 4)])
+
+        # Test cases with non-integer start positions, checking for rounding behavior if applicable
+        self.assertEqual(definitions.random_trajectory_straight(2, 1.5, 2.5, 1), [(1.5, 2.5), (2.5, 2.5)])
+        self.assertEqual(definitions.random_trajectory_straight(2, 3.7, 1.2, 1), [(3.7, 1.2), (4.7, 1.2)])
+
+        # Test cases with decimal precision, ensuring the function rounds the coordinates as specified
+        self.assertEqual(definitions.random_trajectory_straight(2, 0, 0, 1, decimals=2), [(0, 0), (1, 0)])
+        self.assertEqual(definitions.random_trajectory_straight(2, 0.123456, 0.654321, 1, decimals=3), [(0.123, 0.654), (1.123, 0.654)])
+
+
     def test_data_cut(self):
         self.assertEqual(definitions.listTrim([], 0), [])
 
@@ -90,11 +158,45 @@ class TestDefinitions(unittest.TestCase):
         self.assertEqual(definitions.listTrim([(1, 2), (3, 2), (4, 5)], 2), [(1, 2), (3, 2)])
 
     def test_separate_data(self):
+        # Test case for empty input
         self.assertEqual(definitions.separate_data([]), ([], [], []))
 
-        self.assertEqual(definitions.separate_data([(1, 1, 2), (2, 3, 2)]), ([1, 2], [1, 3], [2, 2]))
+        # Test case for a single point
+        self.assertEqual(
+            definitions.separate_data([(1, 10, 100)]),
+            ([1], [10], [100])
+        )
 
-        # self.assertEqual(definitions.separate_data([(1, 2), (3, 2), (4, 5)], 2), [(1, 2), (3, 2)])
+        # Test case for multiple points
+        self.assertEqual(
+            definitions.separate_data([(1, 10, 100), (2, 20, 200), (3, 30, 300)]),
+            ([1, 2, 3], [10, 20, 30], [100, 200, 300])
+        )
+
+        # Test case for non-sequential frames
+        self.assertEqual(
+            definitions.separate_data([(3, 30, 300), (1, 10, 100), (2, 20, 200)]),
+            ([3, 1, 2], [30, 10, 20], [300, 100, 200])
+        )
+
+        # Test case for negative coordinates
+        self.assertEqual(
+            definitions.separate_data([(1, -10, -100), (2, -20, -200), (3, -30, -300)]),
+            ([1, 2, 3], [-10, -20, -30], [-100, -200, -300])
+        )
+
+        # Test case with decimal points
+        self.assertEqual(
+            definitions.separate_data([(1, 10.5, 100.5), (2, 20.5, 200.5), (3, 30.5, 300.5)]),
+            ([1, 2, 3], [10.5, 20.5, 30.5], [100.5, 200.5, 300.5])
+        )
+
+        # Test case for large number of points
+        self.assertEqual(
+            definitions.separate_data([(i, i*10, i*100) for i in range(1, 101)]),
+            (list(range(1, 101)), [i*10 for i in range(1, 101)], [i*100 for i in range(1, 101)])
+        )
+
 
     def test_cut_frame(self):
         self.assertEqual(definitions.cut_frame_data([]), [])

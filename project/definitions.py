@@ -1,7 +1,6 @@
 ## Sample for testing purposes ##
 import numpy as np
 import math
-import random
 import diff_classifier.features as ft
 import matplotlib.pyplot as plt
 
@@ -159,47 +158,6 @@ def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0, d
         trajectory.append(point)
     return trajectory
 
-# def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0):
-#     """
-#     returns a straight line trajectory in a x-y matrix
-
-#     Parameters:
-#     length (list): number of points in a list
-#     x (int): starting x position of line
-#     y (int): starting y position of line
-#     m (int): amount of space between the points
-#     r (boolean): if rotation is enabled or not
-#     theta (int): degree of rotation (for testing purposes)
-#     Returns:
-#     list: a list of points that make up a line
-#     """
-#     if (length == 0):
-#         return []
-    
-
-#     points = [(x, y)]
-#     theta = 0
-
-#     if(rotation_val == 0): 
-#         if (r):
-#             theta = math.radians(random.uniform(0, 360))
-#     else:
-#         print("we are here?")
-#         theta = math.radians(rotation_val)
-#         print(theta)
-
-#     for i in range(1, length):
-#         new_x = (m * i) + x
-#         new_y = y
-#         if(r or rotation_val != 0):
-#             rotated_x = new_x * math.cos(theta) - new_y * math.sin(theta)
-#             rotated_y = new_x * math.sin(theta) + new_y * math.cos(theta)
-#             points.append((rotated_x, rotated_y))
-#         else:
-#             points.append((new_x, new_y))
-    
-#     return points
-
 def listTrim (data, index):
     """
     
@@ -256,14 +214,3 @@ def plot_points (data, name):
     print(len(index))
     plt.plot(index, data, 'o')
     plt.savefig(name)
-## cut the length array to a fixed length
-
-## diff clasifer - diff clasifer - features.py -> alpha calc.
-
-
-## reocnsutrction loss -?
-## compression 0 loss, aaproximatiation 
-# alpha being the trajectory of the data
-
-## alpha mean squared derivation coeeftion , alpha about 1 is increasing.
-## 
