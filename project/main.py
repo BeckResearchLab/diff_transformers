@@ -5,11 +5,28 @@ import os
 import numpy as np
 import File_Def as FD
 
+import matplotlib.pyplot as plt
+import random
+
 def main():
     print("main")
 
+
+def plot_syn():
+    random_trajectories = dm.create_synthetic(200)
+    for trajectory in random_trajectories:
+        x_values = [point[0] for point in trajectory]  # Extracting x-values
+        y_values = [point[1] for point in trajectory]  # Extracting y-values
+        plt.plot(x_values, y_values)
+
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Trajectories')
+    plt.grid(True)
+    plt.show()
+
 def plot(data):
-    df.plot_points(data)
+    df.plot_points(data, "fig1.png")
 
 def calculate_mass_alpha(data_with_frame):
     cutoff = df.find_min_length(data_with_frame)
@@ -46,7 +63,19 @@ def calculate_mass_alpha(data_with_frame):
 if __name__ == "__main__":
     path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
     path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
-    os.chdir(path_to_database)
-    trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA")
-    os.chdir(path_to_code)
-    data_with_frame = df.separate_trajectories(trajectories)
+    # os.chdir(path_to_database)
+    # trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
+    # os.chdir(path_to_code)
+    # data_with_frame = df.separate_trajectories(trajectories)
+    # print(data_with_frame)
+    # for trajectory in data_with_frame:
+    #     x_values = [point[1] for point in trajectory]  # Extracting x-values
+    #     y_values = [point[2] for point in trajectory]  # Extracting y-values
+    #     plt.plot(x_values, y_values)
+
+    # plt.xlabel('X')
+    # plt.ylabel('Y')
+    # plt.title('Trajectories')
+    # plt.grid(True)
+    # plt.show()
+    plot_syn()

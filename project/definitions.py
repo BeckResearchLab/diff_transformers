@@ -3,6 +3,7 @@ import numpy as np
 import math
 import diff_classifier.features as ft
 import matplotlib.pyplot as plt
+import random 
 
 def add(a, b):
     return a + b
@@ -152,6 +153,7 @@ def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0, d
     for i in range(length):
         point = (x + i * m, y)
         if r:
+            rotation_val = random.randint(0, 360)
             point = rotate_point(point[0], point[1], rotation_val, origin=(x, y))
         # Round the point to the specified number of decimals
         point = (round(point[0], decimals), round(point[1], decimals))
@@ -214,3 +216,5 @@ def plot_points (data, name):
     print(len(index))
     plt.plot(index, data, 'o')
     plt.savefig(name)
+
+    
