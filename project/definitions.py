@@ -4,6 +4,8 @@ import math
 import diff_classifier.features as ft
 import matplotlib.pyplot as plt
 import random 
+import torch
+
 
 def add(a, b):
     return a + b
@@ -150,10 +152,10 @@ def random_trajectory_straight(length, x=0, y=0, m=1, r=False, rotation_val=0, d
     list: a list of points that make up a line.
     """
     trajectory = []
+    rotation_val = random.randint(0, 360)
     for i in range(length):
         point = (x + i * m, y)
         if r:
-            rotation_val = random.randint(0, 360)
             point = rotate_point(point[0], point[1], rotation_val, origin=(x, y))
         # Round the point to the specified number of decimals
         point = (round(point[0], decimals), round(point[1], decimals))
@@ -218,3 +220,31 @@ def plot_points (data, name):
     plt.savefig(name)
 
     
+
+def normalize_data(data):
+    # (x, y) -> needs to be the data, otherwise i gotta rewrite possibly
+    # can assume with none
+    all_points = [point for seq in data for point in seq if point is not None]
+    all_x = [point[0] for point in all_points]
+    all_y = [point[1] for point in all_points]
+    
+    min_x, max_x = min(all_x), max(all_x)
+    min_y, max_y = min(all_y), max(all_y)
+    
+    # Normalize data
+    normalized_data = []
+    for seq in data:
+        normalized_seq = [(float(point[0] - min_x) / (max_x - min_x), float(point[1] - min_y) / (max_y - min_y)) if point is not None else None for point in seq]
+        normalized_data.append(normalized_seq)
+        
+    return normalized_data
+
+
+def positional_encoding(seq_len, d_model):
+    position = np.arange(seq_len)[:, np.newaxis]
+    div_term = np.exp(np.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))
+    pos_encoding = np.zeros((seq_len, d_model))
+    pos_encoding[:, 0::2] = np.sin(position * div_term)
+    pos_encoding[:, 1::2] = np.cos(position * div_term)
+    
+    return torch.tensor(pos_encoding, dtype=torch.float32)

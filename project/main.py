@@ -6,27 +6,9 @@ import numpy as np
 import File_Def as FD
 
 import matplotlib.pyplot as plt
-import random
-
+import plots
 def main():
     print("main")
-
-
-def plot_syn():
-    random_trajectories = dm.create_synthetic(200)
-    for trajectory in random_trajectories:
-        x_values = [point[0] for point in trajectory]  # Extracting x-values
-        y_values = [point[1] for point in trajectory]  # Extracting y-values
-        plt.plot(x_values, y_values)
-
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Trajectories')
-    plt.grid(True)
-    plt.show()
-
-def plot(data):
-    df.plot_points(data, "fig1.png")
 
 def calculate_mass_alpha(data_with_frame):
     cutoff = df.find_min_length(data_with_frame)
@@ -66,16 +48,20 @@ if __name__ == "__main__":
     # os.chdir(path_to_database)
     # trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
     # os.chdir(path_to_code)
-    # data_with_frame = df.separate_trajectories(trajectories)
-    # print(data_with_frame)
-    # for trajectory in data_with_frame:
-    #     x_values = [point[1] for point in trajectory]  # Extracting x-values
-    #     y_values = [point[2] for point in trajectory]  # Extracting y-values
-    #     plt.plot(x_values, y_values)
 
-    # plt.xlabel('X')
-    # plt.ylabel('Y')
-    # plt.title('Trajectories')
-    # plt.grid(True)
-    # plt.show()
-    plot_syn()
+    random_trajectories = dm.create_synthetic(2, 5, 5, 0, 0, 5)
+    # random_trajectories = [[(0,0),(1,1),(2,2), (3,3)], [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]]
+    #temp = dm.create_synthetic(2, 5, 5, 0, 0, 5)
+    print(random_trajectories)
+    temp = df.normalize_data(random_trajectories)
+    print(temp)
+    normalized_data = df.mask_point_at_index(temp, 2)
+    print(normalized_data)
+    plots.plot_syn_norm(normalized_data)
+    # seq_len = len(normalized_data[0])
+    # d_model = 128 
+
+    # pos_encoding = df.positional_encoding(seq_len, d_model)
+
+
+
