@@ -3,44 +3,91 @@ import data_manipulation as dm
 import sql_def as sql
 import os
 import numpy as np
-import File_Def as FD
+import temp.File_Def as FD
 
 import matplotlib.pyplot as plt
 import plots
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+import torch.optim as optim
+import math
+import torch.nn.functional as F
+
+
 def main():
     print("main")
 
-def calculate_mass_alpha(data_with_frame):
-    cutoff = df.find_min_length(data_with_frame)
-    end = df.find_max_length(data_with_frame)
+
+
+
+def prepare_data_for_transformer(normalized_data, masked_points):
+    src_data = []
+    tgt_data = []
+    src_masks = []
+
+    for i, trajectory in enumerate(normalized_data):
+        src_seq = []
+        tgt_seq = []
+        src_mask = []
+
+        for _, point in enumerate(trajectory):
+            if point is not None:
+                src_seq.append(point)
+                tgt_seq.append(point)
+                src_mask.append(False)
+            else:
+                src_seq.append((0.0, 0.0))   ## 0 for now, we could change it ig
+                tgt_seq.append(masked_points[i])
+                src_mask.append(True)
+
+        src_data.append(src_seq)
+        tgt_data.append(tgt_seq)
+        src_masks.append(src_mask)
+
+    src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
+    tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
+    src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
+    #src_masks_tensor = src_masks_tensor.transpose(0, 1)
+
+    return src_data_tensor, tgt_data_tensor, src_masks_tensor
+
+
+class BasicTrajectoryModel(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(BasicTrajectoryModel, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
     
-    full_list = []
-    for track in data_with_frame:    
-        temp = dm.list_calculate(track)
-        if (isinstance(temp, np.float64)):
-            full_list.append(temp)                      
-                              
-    final_result = []
-    while (cutoff <= end):
-        temp_res = []
-        print("started on " + str(cutoff))
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+    
 
-        for track in data_with_frame:
+def prepare_single_track(track, masked_index):
+    """Prepare a single track by masking a point and converting it to a tensor."""
+    track = track.copy()  # Copy the track to avoid modifying the original
+    masked_point = track[masked_index]  # Save the masked point for comparison
+    track[masked_index] = (0.0, 0.0)  # Mask the point
 
-            if len(track) < cutoff:
-                continue
+    # Convert the track to a tensor and add a batch dimension
+    track_tensor = torch.tensor([track], dtype=torch.float32)
+    
+    return track_tensor, masked_point
 
-            new_track = df.listTrim(track, cutoff)
-            temp = dm.list_calculate(new_track)
-            if (isinstance(temp, np.float64)):
-                temp_res.append(temp)    
+def predict_masked_point(model, track_tensor, masked_index):
+    model.eval()  # Set the model to evaluation mode
+    with torch.no_grad():  # Disable gradient computation
+        output = model(track_tensor.view(-1, 2))  # Predict
+        output = output.view(track_tensor.shape)  # Reshape output to match the input shape
+    
+    # Extract the prediction for the masked point
+    predicted_masked_point = output[0, masked_index].numpy()
+    
+    return predicted_masked_point
 
-        final_result.append(df.calculate_avg(temp_res))
-        cutoff = cutoff + 1
-
-        plot(final_result, "final_result.png")
-        FD.save_data("finalResult.txt", final_result)
-        FD.save_data("Full_n.txt", df.calculate_avg(full_list))
 
 if __name__ == "__main__":
     path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
@@ -49,19 +96,71 @@ if __name__ == "__main__":
     # trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
     # os.chdir(path_to_code)
 
-    random_trajectories = dm.create_synthetic(2, 5, 5, 0, 0, 5)
-    # random_trajectories = [[(0,0),(1,1),(2,2), (3,3)], [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]]
-    #temp = dm.create_synthetic(2, 5, 5, 0, 0, 5)
-    print(random_trajectories)
-    temp = df.normalize_data(random_trajectories)
-    print(temp)
-    normalized_data = df.mask_point_at_index(temp, 2)
-    print(normalized_data)
-    plots.plot_syn_norm(normalized_data)
-    # seq_len = len(normalized_data[0])
-    # d_model = 128 
+    path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
+    path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
+    os.chdir(path_to_database)
+    track_from_sql =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
+    os.chdir(path_to_code)
+    track_with_frame = df.separate_trajectories(track_from_sql)
+    frame_data, x_data, y_data = df.separate_data(track_with_frame, True)
+    tracks = df.separate_data(track_with_frame, False)
+    print(tracks)
+    # random_trajectories = dm.create_synthetic(100000, 1000, 1000, 0, 0, 5)
+    # test2 = dm.create_synthetic(1, 1000, 1000, 0, 0, 5)
+    # # random_trajectories = [[(0,0),(1,1),(2,2), (3,3)], [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]]
+    # #temp = dm.create_synthetic(2, 5, 5, 0, 0, 5)
+    # #print(random_trajectories)
+    # temp, test  = df.normalize_data(random_trajectories, test2)
 
-    # pos_encoding = df.positional_encoding(seq_len, d_model)
+    # #print(temp)
+    # normalized_data = df.mask_point_at_index(temp, 2)
+    # #print(normalized_data)
+    # # seq_len = len(normalized_data[0])
+    # # d_model = 128 
+
+    # # pos_encoding = df.positional_encoding(seq_len, d_model)
+    # normalized_data2, masked_points = normalized_data
+    # src_data_tensor, tgt_data_tensor, src_masks_tensor = prepare_data_for_transformer(normalized_data2, masked_points)
+
+    # ## DEBUG
+    # # print("src_data_tensor shape:", src_data_tensor.shape)
+    # # print("src_data_tensor value:", src_data_tensor)
+    # # print("tgt_data_tensor shape:", tgt_data_tensor.shape)
+    # # print("tgt_data_tensor value:", tgt_data_tensor)
+    # # print("src_masks_tensor shape:", src_masks_tensor.shape)
 
 
+    # input_dim = 2  # Each point is 2D (x, y)
+    # hidden_dim = 64  # Example hidden dimension, can be adjusted
+    # output_dim = 2  # Predicting 2D points
 
+    # model = BasicTrajectoryModel(input_dim, hidden_dim, output_dim)
+
+    # # Loss function and optimizer
+    # loss_function = nn.MSELoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    # dataset = TensorDataset(src_data_tensor, tgt_data_tensor, src_masks_tensor)
+    # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+    # # Training loop
+    # for epoch in range(2):  # Adjust the number of epochs as needed
+    #     model.train()
+    #     total_loss = 0
+
+    #     for src, tgt, mask in dataloader:
+    #         optimizer.zero_grad()
+    #         # Predict the output for the entire batch
+    #         output = model(src.view(-1, input_dim))  # Reshape input to match model's expected shape
+    #         output = output.view(src.shape)  # Reshape output to match target's shape
+            
+    #         # Compute loss only for the masked positions
+    #         masked_output = output[mask]
+    #         masked_tgt = tgt[mask]
+    #         loss = loss_function(masked_output, masked_tgt)
+
+    #         loss.backward()
+    #         optimizer.step()
+    #         total_loss += loss.item()
+
+    #     print(f"Epoch {epoch+1}, Loss: {total_loss / len(dataloader)}")

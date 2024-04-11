@@ -1,11 +1,13 @@
-## Sample for testing purposes ##
+## package imports ##
 import numpy as np
 import math
-import diff_classifier.features as ft
-import matplotlib.pyplot as plt
 import random 
+import matplotlib.pyplot as plt
 import torch
 
+## local package import ##
+import data_manipulation as dm
+import plots
 
 def add(a, b):
     return a + b
@@ -186,7 +188,7 @@ def calculate_avg (data):
 
     return sum / len(data)
 
-def separate_data (data):
+def separate_data_helper (data):
     """
     This method sepeartes the givne trajecory into 3 arrrays of
     frame, x and y
@@ -211,11 +213,30 @@ def separate_data (data):
 
     return frame, x, y
 
-
+def separate_data (data, type=False):
+    frame = []
+    x = []
+    y = []
+    for track in data:
+        frame_temp, x_temp, y_temp = separate_data_helper(track)
+        frame.append(frame)
+        x.append(x_temp)
+        y.append(y_temp)
+    if(type):
+        return frame, x, y
+    else:
+        track = []
+        for index in range(len(x)):
+            x_tracks = x[index]
+            y_tracks = y[index]
+            temp = []
+            for index_track in range(len(x_tracks)):
+                temp.append((x_tracks[index_track], y_tracks[index_track]))
+            track.append(temp)
+        return track
+    
 def plot_points (data, name):
-    print(len(data))
     index = np.linspace(1, len(data), num=len(data))
-    print(len(index))
     plt.plot(index, data, 'o')
     plt.savefig(name)
 
@@ -228,23 +249,103 @@ def normalize_data(data):
     all_x = [point[0] for point in all_points]
     all_y = [point[1] for point in all_points]
     
-    min_x, max_x = min(all_x), max(all_x)
-    min_y, max_y = min(all_y), max(all_y)
-    
+    min_x = min(all_x)
+    max_x = max(all_x)
+    min_y = min(all_y)
+    max_y = max(all_y)
+    range = max_x - min_x
     # Normalize data
     normalized_data = []
     for seq in data:
-        normalized_seq = [(float(point[0] - min_x) / (max_x - min_x), float(point[1] - min_y) / (max_y - min_y)) if point is not None else None for point in seq]
+        normalized_seq = [(float(point[0] - min_x) / range, float(point[1] - min_y) / range) if point is not None else None for point in seq]
         normalized_data.append(normalized_seq)
-        
+
     return normalized_data
 
+def save_data(filename, data):
+    with open(filename, 'w') as file:
+        for item in data:
+            file.write(f"{item}\n")
 
-def positional_encoding(seq_len, d_model):
-    position = np.arange(seq_len)[:, np.newaxis]
-    div_term = np.exp(np.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))
-    pos_encoding = np.zeros((seq_len, d_model))
-    pos_encoding[:, 0::2] = np.sin(position * div_term)
-    pos_encoding[:, 1::2] = np.cos(position * div_term)
+
+def split_test_train(data, percentOfSplit=90):
+    """
+    percent of split, like 90-10 or 60-40 and what not given from 0 to 100 as val
+    """
+    test = []
+    train = []
+
+    percent = percentOfSplit / 100
+    train_len = math.floor(len(data) * percent)
+    for tracks in data:
+        if train_len > 0:
+            train.append(tracks)
+        else:
+            test.append(tracks)
+        train_len = train_len - 1
+    return train, test
+
+
+def calculate_mass_alpha(data_with_frame):
+    cutoff = find_min_length(data_with_frame)
+    end = find_max_length(data_with_frame)
     
-    return torch.tensor(pos_encoding, dtype=torch.float32)
+    full_list = []
+    for track in data_with_frame:    
+        temp = dm.list_calculate(track)
+        if (isinstance(temp, np.float64)):
+            full_list.append(temp)                      
+                              
+    final_result = []
+    while (cutoff <= end):
+        temp_res = []
+        print("started on " + str(cutoff))
+
+        for track in data_with_frame:
+
+            if len(track) < cutoff:
+                continue
+
+            new_track = listTrim(track, cutoff)
+            temp = dm.list_calculate(new_track)
+            if (isinstance(temp, np.float64)):
+                temp_res.append(temp)    
+
+        final_result.append(calculate_avg(temp_res))
+        cutoff = cutoff + 1
+
+        plots.plot(final_result, "final_result.png")
+        save_data("finalResult.txt", final_result)
+        save_data("Full_n.txt", calculate_avg(full_list))
+
+
+def prepare_data_for_transformer(normalized_data, masked_points):
+    src_data = []
+    tgt_data = []
+    src_masks = []
+
+    for i, trajectory in enumerate(normalized_data):
+        src_seq = []
+        tgt_seq = []
+        src_mask = []
+
+        for _, point in enumerate(trajectory):
+            if point is not None:
+                src_seq.append(point)
+                tgt_seq.append(point)
+                src_mask.append(False)
+            else:
+                src_seq.append((0.0, 0.0))   ## 0 for now, we could change it ig
+                tgt_seq.append(masked_points[i])
+                src_mask.append(True)
+
+        src_data.append(src_seq)
+        tgt_data.append(tgt_seq)
+        src_masks.append(src_mask)
+
+    src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
+    tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
+    src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
+    #src_masks_tensor = src_masks_tensor.transpose(0, 1)
+
+    return src_data_tensor, tgt_data_tensor, src_masks_tensor
