@@ -324,20 +324,29 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     tgt_data = []
     src_masks = []
 
+    max_len = max(len(trajectory) for trajectory in normalized_data)
+
     for i, trajectory in enumerate(normalized_data):
         src_seq = []
         tgt_seq = []
         src_mask = []
 
-        for _, point in enumerate(trajectory):
+        for point in trajectory:
             if point is not None:
                 src_seq.append(point)
                 tgt_seq.append(point)
                 src_mask.append(False)
             else:
-                src_seq.append((0.0, 0.0))   ## 0 for now, we could change it ig
+                src_seq.append((0.0, 0.0))
                 tgt_seq.append(masked_points[i])
                 src_mask.append(True)
+
+        # need to figure out a better for masking, maybe cut it? I could also make synthetic data to not be random
+        
+        while len(src_seq) < max_len:
+            src_seq.append((0.0, 0.0))
+            tgt_seq.append((0.0, 0.0))
+            src_mask.append(False)
 
         src_data.append(src_seq)
         tgt_data.append(tgt_seq)
@@ -346,6 +355,5 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
-    #src_masks_tensor = src_masks_tensor.transpose(0, 1)
 
     return src_data_tensor, tgt_data_tensor, src_masks_tensor
