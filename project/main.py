@@ -3,7 +3,6 @@ import data_manipulation as dm
 import sql_def as sql
 import os
 import numpy as np
-import temp.File_Def as FD
 
 import matplotlib.pyplot as plt
 import plots
@@ -14,6 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 import math
 import torch.nn.functional as F
+import model as md
 
 
 def main():
@@ -96,71 +96,18 @@ if __name__ == "__main__":
     # trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
     # os.chdir(path_to_code)
 
-    path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
-    path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
-    os.chdir(path_to_database)
-    track_from_sql =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
-    os.chdir(path_to_code)
-    track_with_frame = df.separate_trajectories(track_from_sql)
-    frame_data, x_data, y_data = df.separate_data(track_with_frame, True)
-    tracks = df.separate_data(track_with_frame, False)
-    print(tracks)
+    # path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
+    # path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
+    # os.chdir(path_to_database)
+    # track_from_sql =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
+    # os.chdir(path_to_code)
+    # track_with_frame = df.separate_trajectories(track_from_sql)
+    # frame_data, x_data, y_data = df.separate_data(track_with_frame, True)
+    # tracks = df.separate_data(track_with_frame, False)
+    # print(tracks)
     # random_trajectories = dm.create_synthetic(100000, 1000, 1000, 0, 0, 5)
     # test2 = dm.create_synthetic(1, 1000, 1000, 0, 0, 5)
     # # random_trajectories = [[(0,0),(1,1),(2,2), (3,3)], [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]]
     # #temp = dm.create_synthetic(2, 5, 5, 0, 0, 5)
     # #print(random_trajectories)
     # temp, test  = df.normalize_data(random_trajectories, test2)
-
-    # #print(temp)
-    # normalized_data = df.mask_point_at_index(temp, 2)
-    # #print(normalized_data)
-    # # seq_len = len(normalized_data[0])
-    # # d_model = 128 
-
-    # # pos_encoding = df.positional_encoding(seq_len, d_model)
-    # normalized_data2, masked_points = normalized_data
-    # src_data_tensor, tgt_data_tensor, src_masks_tensor = prepare_data_for_transformer(normalized_data2, masked_points)
-
-    # ## DEBUG
-    # # print("src_data_tensor shape:", src_data_tensor.shape)
-    # # print("src_data_tensor value:", src_data_tensor)
-    # # print("tgt_data_tensor shape:", tgt_data_tensor.shape)
-    # # print("tgt_data_tensor value:", tgt_data_tensor)
-    # # print("src_masks_tensor shape:", src_masks_tensor.shape)
-
-
-    # input_dim = 2  # Each point is 2D (x, y)
-    # hidden_dim = 64  # Example hidden dimension, can be adjusted
-    # output_dim = 2  # Predicting 2D points
-
-    # model = BasicTrajectoryModel(input_dim, hidden_dim, output_dim)
-
-    # # Loss function and optimizer
-    # loss_function = nn.MSELoss()
-    # optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-    # dataset = TensorDataset(src_data_tensor, tgt_data_tensor, src_masks_tensor)
-    # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-
-    # # Training loop
-    # for epoch in range(2):  # Adjust the number of epochs as needed
-    #     model.train()
-    #     total_loss = 0
-
-    #     for src, tgt, mask in dataloader:
-    #         optimizer.zero_grad()
-    #         # Predict the output for the entire batch
-    #         output = model(src.view(-1, input_dim))  # Reshape input to match model's expected shape
-    #         output = output.view(src.shape)  # Reshape output to match target's shape
-            
-    #         # Compute loss only for the masked positions
-    #         masked_output = output[mask]
-    #         masked_tgt = tgt[mask]
-    #         loss = loss_function(masked_output, masked_tgt)
-
-    #         loss.backward()
-    #         optimizer.step()
-    #         total_loss += loss.item()
-
-    #     print(f"Epoch {epoch+1}, Loss: {total_loss / len(dataloader)}")
