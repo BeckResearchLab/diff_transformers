@@ -237,7 +237,7 @@ def separate_data (data, type=False):
     
 def plot_points (data, name):
     index = np.linspace(1, len(data), num=len(data))
-    plt.plot(index, data, 'o')
+    plt.plot(data, 'o')
     plt.savefig(name)
 
     
@@ -324,34 +324,31 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     tgt_data = []
     src_masks = []
 
-    max_len = max(len(trajectory) for trajectory in normalized_data)
+    #max_len = max(len(trajectory) for trajectory in normalized_data)
 
     for i, trajectory in enumerate(normalized_data):
         src_seq = []
-        tgt_seq = []
         src_mask = []
 
-        for point in trajectory:
+        masked_value = masked_points[i]
+
+        for j, point in enumerate(trajectory):
             if point is not None:
                 src_seq.append(point)
-                tgt_seq.append(point)
                 src_mask.append(False)
             else:
-                src_seq.append((0.0, 0.0))
-                tgt_seq.append(masked_points[i])
+                src_seq.append((0.0, 0.0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
                 src_mask.append(True)
 
-        # need to figure out a better for masking, maybe cut it? I could also make synthetic data to not be random
-        
-        while len(src_seq) < max_len:
-            src_seq.append((0.0, 0.0))
-            tgt_seq.append((0.0, 0.0))
-            src_mask.append(False)
+        # while len(src_seq) < max_len:
+        #     src_seq.append((0.0, 0.0))
+        #     src_mask.append(False)
 
         src_data.append(src_seq)
-        tgt_data.append(tgt_seq)
+        tgt_data.append(masked_value)
         src_masks.append(src_mask)
-
+    print(src_data)
+    print(tgt_data)
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)

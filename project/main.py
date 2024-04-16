@@ -64,30 +64,6 @@ class BasicTrajectoryModel(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-    
-
-def prepare_single_track(track, masked_index):
-    """Prepare a single track by masking a point and converting it to a tensor."""
-    track = track.copy()  # Copy the track to avoid modifying the original
-    masked_point = track[masked_index]  # Save the masked point for comparison
-    track[masked_index] = (0.0, 0.0)  # Mask the point
-
-    # Convert the track to a tensor and add a batch dimension
-    track_tensor = torch.tensor([track], dtype=torch.float32)
-    
-    return track_tensor, masked_point
-
-def predict_masked_point(model, track_tensor, masked_index):
-    model.eval()  # Set the model to evaluation mode
-    with torch.no_grad():  # Disable gradient computation
-        output = model(track_tensor.view(-1, 2))  # Predict
-        output = output.view(track_tensor.shape)  # Reshape output to match the input shape
-    
-    # Extract the prediction for the masked point
-    predicted_masked_point = output[0, masked_index].numpy()
-    
-    return predicted_masked_point
-
 
 if __name__ == "__main__":
     path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"

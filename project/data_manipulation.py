@@ -24,6 +24,7 @@ def create_synthetic(size, maxX=1000, maxY=1000, minX=0, minY=0, len=30):
     data = []
     for _ in range(size):
         length = random.randint(5, len)
+        length = len
         x = random.randint(minX, maxX)
         y = random.randint(minY, maxY)
         m = random.randint(1, 10)

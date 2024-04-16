@@ -1,7 +1,7 @@
 import definitions as df
 import data_manipulation as dm
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def plot_syn(random_trajectories=[]):
     if(len(random_trajectories) == 0):
@@ -48,3 +48,22 @@ def plot_syn_norm(data):
 
 def plot(data):
     df.plot_points(data, "fig1.png")
+
+
+def plotLearningCurve(errorTrain, errorTest, regLambda, degree):
+    """
+        plot computed learning curve
+    """
+    minX = 3
+    maxY = max(errorTest[minX + 1 :])
+
+    xs = np.arange(len(errorTrain))
+    plt.plot(xs, errorTrain, "r-o", label="Training Error")
+    plt.plot(xs, errorTest, "b-o", label="Testing Error")
+    plt.plot(xs, np.ones(len(xs)), "k--")
+    plt.title(f"Learning Curve (d={degree}, lambda={regLambda})")
+    plt.xlabel("Training samples")
+    plt.ylabel("Error")
+    plt.yscale("log")
+    plt.ylim(top=maxY)
+    plt.xlim((minX, 10))
