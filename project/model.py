@@ -48,5 +48,13 @@ class LSTMModel(nn.Module):
         out = hn.squeeze(0)
         out = self.fc(out)
         return out
-    
+
+
+class transformerModel(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
+        print("hi")
+
+    def forward(self, x):
+        print("hi")
+
 
