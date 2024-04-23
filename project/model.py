@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+import torch_geometric.nn as gnn
 
 ## From 455
 class BasicTrajectoryModel(nn.Module):
@@ -50,11 +51,21 @@ class LSTMModel(nn.Module):
         return out
 
 
-class transformerModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
-        print("hi")
+class TrajectoryTransformer(nn.Module):
+    def __init__(self, input_dim, d_model, n_heads, num_encoder_layers, dropout=0.1):
+        super().__init__()
+        self.input_embedding = nn.Linear(input_dim, d_model)
+        self.position_embedding = nn.Embedding(10, d_model)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=n_heads, dropout=dropout)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        self.output_layer = nn.Linear(d_model, input_dim)
 
-    def forward(self, x):
-        print("hi")
+    def forward(self, src, src_key_padding_mask):
+        src = self.input_embedding(src) + self.position_embedding(torch.arange(0, src.size(1), device=src.device))
+        if src_key_padding_mask is not None and src_key_padding_mask.size(1) != src.size(0):
+            src_key_padding_mask = src_key_padding_mask.transpose(0, 1)
+        output = self.transformer_encoder(src, src_key_padding_mask=src_key_padding_mask)
+        return self.output_layer(output[:, 0, :])
+
 
 
