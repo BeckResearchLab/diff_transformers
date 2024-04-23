@@ -18,7 +18,7 @@ def list_calculate (trajectory):
 
 def create_synthetic(size, maxX=1000, maxY=1000, minX=0, minY=0, len=30):
     """
-    Creates n trajectories
+    Creates n trajectories that are fake
 
     """
     data = []
