@@ -337,7 +337,7 @@ def prepare_data_for_transformer(normalized_data, masked_points):
                 src_seq.append(point)
                 src_mask.append(False)
             else:
-                src_seq.append((0.0, 0.0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
+                src_seq.append(float('nan')) ## puting it as None, does not let us convert to tensor, what should we do intead?
                 src_mask.append(True)
 
         # while len(src_seq) < max_len:
@@ -347,8 +347,7 @@ def prepare_data_for_transformer(normalized_data, masked_points):
         src_data.append(src_seq)
         tgt_data.append(masked_value)
         src_masks.append(src_mask)
-    print(src_data)
-    print(tgt_data)
+    print("hello")
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
