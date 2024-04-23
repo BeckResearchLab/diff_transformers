@@ -18,5 +18,5 @@ dependencies:
   - pytorch
   - dgl
   - jupyter
-
+  - boto
 
