@@ -17,5 +17,6 @@ dependencies:
   - e3nn
   - pytorch
   - dgl
+  - jupyter
 
 
