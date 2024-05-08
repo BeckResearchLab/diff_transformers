@@ -242,25 +242,29 @@ def plot_points (data, name):
 
     
 
-def normalize_data(data):
+def normalize_data(data, min_x=0, min_y=0, range_x=0, range_y=0):
     # (x, y) -> needs to be the data, otherwise i gotta rewrite possibly
     # can assume with none
     all_points = [point for seq in data for point in seq if point is not None]
-    all_x = [point[0] for point in all_points]
-    all_y = [point[1] for point in all_points]
-    
-    min_x = min(all_x)
-    max_x = max(all_x)
-    min_y = min(all_y)
-    max_y = max(all_y)
-    range = max_x - min_x
+    if range_x or range_y == 0 or min_x == 0 or min_y == 0:
+        all_x = [point[0] for point in all_points]
+        all_y = [point[1] for point in all_points] 
+
+        min_x = min(all_x)
+        max_x = max(all_x)
+        min_y = min(all_y)
+        max_y = max(all_y)
+        range_x = max_x - min_x
+        range_y = max_y - min_y
+
+
     # Normalize data
     normalized_data = []
     for seq in data:
-        normalized_seq = [(float(point[0] - min_x) / range, float(point[1] - min_y) / range) if point is not None else None for point in seq]
+        normalized_seq = [(float(point[0] - min_x) / range_x, float(point[1] - min_y) / range_y) if point is not None else None for point in seq]
         normalized_data.append(normalized_seq)
 
-    return normalized_data
+    return normalized_data, min_x, min_y, range_x, range_y
 
 def save_data(filename, data):
     with open(filename, 'w') as file:
@@ -337,7 +341,7 @@ def prepare_data_for_transformer(normalized_data, masked_points):
                 src_seq.append(point)
                 src_mask.append(False)
             else:
-                src_seq.append(float('nan')) ## puting it as None, does not let us convert to tensor, what should we do intead?
+                src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
                 src_mask.append(True)
 
         # while len(src_seq) < max_len:

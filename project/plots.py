@@ -6,7 +6,6 @@ import numpy as np
 def plot_syn(random_trajectories=[]):
     if(len(random_trajectories) == 0):
         random_trajectories = dm.create_synthetic(3)
-    print(random_trajectories)
     for trajectory in random_trajectories:
         x_values = [point[0] for point in trajectory]
         y_values = [point[1] for point in trajectory] 
@@ -17,6 +16,7 @@ def plot_syn(random_trajectories=[]):
     plt.title('Trajectories')
     plt.grid(True)
     plt.show()
+
 def plot_syn_norm(data):
     trajectories, replacements = data
     count = 0
@@ -26,7 +26,6 @@ def plot_syn_norm(data):
         y_values = []
         x_replacements = []
         y_replacements = []
-        print(trajectory)
         for point in trajectory:
             if point is None:
                 x_replacements.append(replacement_point[0])
