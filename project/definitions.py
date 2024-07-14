@@ -333,23 +333,26 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     for i, trajectory in enumerate(normalized_data):
         src_seq = []
         src_mask = []
+        tgt_seq = []
 
         masked_value = masked_points[i]
 
         for j, point in enumerate(trajectory):
             if point is not None:
                 src_seq.append(point)
-                src_mask.append(False)
+                tgt_seq.append(point)
+                src_mask.append((False, False))
             else:
                 src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
-                src_mask.append(True)
+                src_mask.append((True, True))
+                tgt_seq.append(masked_value)
 
         # while len(src_seq) < max_len:
         #     src_seq.append((0.0, 0.0))
         #     src_mask.append(False)
 
         src_data.append(src_seq)
-        tgt_data.append(masked_value)
+        tgt_data.append(tgt_seq)
         src_masks.append(src_mask)
     print("hello")
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)

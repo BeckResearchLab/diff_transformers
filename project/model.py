@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import torch_geometric.nn as gnn
+from torch_geometric.nn.conv import GCNConv
 
 ## From 455
 class BasicTrajectoryModel(nn.Module):
@@ -36,7 +37,7 @@ class EnhancedTrajectoryModel(nn.Module):
         x = self.activation(x)
         return x
     
-## From google
+
 class LSTMModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
         super(LSTMModel, self).__init__()
@@ -69,3 +70,46 @@ class TrajectoryTransformer(nn.Module):
 
 
 
+
+
+class EquivariantGraphNN(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(EquivariantGraphNN, self).__init__()
+        self.conv1 = GCNConv(in_channels, 64)
+        self.conv2 = GCNConv(64, 128)
+        self.conv3 = GCNConv(128, out_channels)
+
+    def forward(self, x, edge_index):
+        x = F.relu(self.conv1(x, edge_index))
+        x = F.relu(self.conv2(x, edge_index))
+        x = self.conv3(x, edge_index)
+        return x
+
+class EquivariantTransformer(nn.Module):
+    def __init__(self, input_dim, model_dim, num_heads, num_layers, output_dim):
+        super(EquivariantTransformer, self).__init__()
+        self.embedding = nn.Linear(input_dim, model_dim)
+        self.transformer = nn.Transformer(
+            d_model=model_dim, nhead=num_heads, num_encoder_layers=num_layers, num_decoder_layers=num_layers
+        )
+        self.fc_out = nn.Linear(model_dim, output_dim)
+
+    def forward(self, src, tgt, src_mask=None, tgt_mask=None):
+        src = self.embedding(src)
+        tgt = self.embedding(tgt)
+        src = src.permute(1, 0, 2)  # (N, S, E) -> (S, N, E) for transformer
+        tgt = tgt.permute(1, 0, 2)  # (N, T, E) -> (T, N, E) for transformer
+        transformer_output = self.transformer(src, tgt, src_mask, tgt_mask)
+        output = self.fc_out(transformer_output)
+        return output.permute(1, 0, 2)  # (S, N, E) -> (N, S, E)
+
+class SelfSupervisedModel(nn.Module):
+    def __init__(self, in_channels, out_channels, input_dim, model_dim, num_heads, num_layers, output_dim):
+        super(SelfSupervisedModel, self).__init__()
+        self.gnn = EquivariantGraphNN(in_channels, out_channels)
+        self.transformer = EquivariantTransformer(out_channels, model_dim, num_heads, num_layers, output_dim)
+
+    def forward(self, x, edge_index, src, tgt, src_mask=None, tgt_mask=None):
+        gnn_output = self.gnn(x, edge_index)
+        transformer_output = self.transformer(gnn_output, tgt, src_mask, tgt_mask)
+        return transformer_output
