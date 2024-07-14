@@ -20,7 +20,11 @@ def main():
     print("main")
 
 
-
+def compute_accuracy(predictions, targets, threshold=0.01):
+    distances = torch.sqrt(torch.sum((predictions - targets) ** 2, dim=1))
+    accurate_predictions = distances < threshold
+    accuracy = torch.mean(accurate_predictions.float()) * 100
+    return accuracy.item()
 
 def prepare_data_for_transformer(normalized_data, masked_points):
     src_data = []
@@ -68,22 +72,110 @@ class BasicTrajectoryModel(nn.Module):
 if __name__ == "__main__":
     path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
     path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
-    # os.chdir(path_to_database)
-    # trajectories =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
-    # os.chdir(path_to_code)
 
-    # path_to_database = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project\data"
-    # path_to_code = r"C:\Users\alito\Desktop\DeepLearning-Model\diff_transformers\project"
-    # os.chdir(path_to_database)
-    # track_from_sql =  sql.data_from_sql("database.db", "SELECT * FROM TRACKMATEDATA LIMIT 7000")
-    # os.chdir(path_to_code)
-    # track_with_frame = df.separate_trajectories(track_from_sql)
-    # frame_data, x_data, y_data = df.separate_data(track_with_frame, True)
-    # tracks = df.separate_data(track_with_frame, False)
-    # print(tracks)
-    # random_trajectories = dm.create_synthetic(100000, 1000, 1000, 0, 0, 5)
-    # test2 = dm.create_synthetic(1, 1000, 1000, 0, 0, 5)
-    # # random_trajectories = [[(0,0),(1,1),(2,2), (3,3)], [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]]
-    # #temp = dm.create_synthetic(2, 5, 5, 0, 0, 5)
-    # #print(random_trajectories)
-    # temp, test  = df.normalize_data(random_trajectories, test2)
+
+    total_size = 12000
+    max_x = 1000
+    max_y = 1000
+    min_x = 0
+    min_y = 0
+    track_len = 20
+
+    trajectories = dm.create_synthetic(total_size, max_x, max_y, min_x, min_y, track_len)
+
+    train_norm, test_norm = df.split_test_train(trajectories)
+    train, min_x, min_y, range_x, range_y = df.normalize_data(train_norm)
+    test, min_x, min_y, range_x, range_y = df.normalize_data(test_norm, min_x, min_y, range_x, range_y)
+    train_data, train_masked_point = df.mask_point_at_index(train, 6)
+    test_data, test_masked_point = df.mask_point_at_index(test, 6)
+
+    print(len(train_data))
+    print(len(test_masked_point))
+
+
+    src_data_tensor, tgt_data_tensor, src_masks_tensor = df.prepare_data_for_transformer(train_data, train_masked_point)
+
+## DEBUG
+    print(src_data_tensor)
+    print("src_data_tensor shape:", src_data_tensor.shape)
+    print("tgt_data_tensor shape:", tgt_data_tensor.shape)
+    print("src_masks_tensor shape:", src_masks_tensor.shape)
+
+
+    input_dim = 2
+    hidden_dim = 64                                                                                   
+    output_dim = 2
+    rate = 0.0001
+
+    #model = md.SelfSupervisedModel(in_channels=3, out_channels=128, input_dim=128, model_dim=256, num_heads=8, num_layers=6, output_dim=3)
+    model = md.LSTMModel(2, 32, 2, 1)
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=rate) ## w
+    dataset = TensorDataset(src_data_tensor, tgt_data_tensor, src_masks_tensor)
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+
+    ## TEMP
+    n_iters = 40
+    learning_rate = 0.001
+    batch_size = 32
+    threshold = 0.01
+
+    # Define the loss function and optimizer
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    loss_values = []
+    accuracy_values = []
+
+    for epoch in range(40):
+        total_loss = 0
+        model.train()  # Set the model to training mode
+        for src, tgt, mask in dataloader:
+            optimizer.zero_grad()
+            output = model(src)
+            masked_output = output  # output[:, 6, :]
+            loss = loss_function(masked_output, tgt)
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+        avg_loss = total_loss / len(dataloader)
+        loss_values.append(avg_loss)
+        print(f'Epoch {epoch+1}/{n_iters}, Loss: {avg_loss}')
+
+        # Evaluation phase
+        model.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            t_src_data_tensor, t_tgt_data_tensor, t_src_masks_tensor = df.prepare_data_for_transformer(test_data, test_masked_point)
+            print(t_tgt_data_tensor[2])
+            predictions = model(t_src_data_tensor)
+            print(predictions[2])
+            accuracy = compute_accuracy(predictions, t_tgt_data_tensor, threshold=0.01)
+            print(accuracy)
+            accuracy_values.append(accuracy)
+            print(f'Accuracy after Epoch {epoch+1}/{n_iters}: {accuracy:.2f}%')
+
+    # Plotting loss and accuracy
+    epochs = range(1, 40 + 1)
+
+    plt.figure(figsize=(12, 5))
+
+    # Plot loss
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, loss_values, 'b', label='Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training Loss')
+    plt.legend()
+
+    # Plot accuracy
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, accuracy_values, 'r', label='Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy (%)')
+    plt.title('Model Accuracy')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()

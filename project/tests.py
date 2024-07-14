@@ -1,5 +1,6 @@
 import unittest
 import definitions
+from norm_def import normalize_data, normalize_point, normalize_points_list, unnormalize_data, unnormalize_point, unnormalize_points_list
 import sql_def
 ## python -m unittest tests.py
 
@@ -216,6 +217,53 @@ class TestSQL(unittest.TestCase):
         sql1_command = "SELECT Track_ID, Frame, X, Y FROM TRACKMATEDATA WHERE slide = 1 AND video = 1 LIMIT 4;"
         sql1_data = [(0, 63, 424.4435,1711.9775), (0,64,402.177,1711.2914), (0,65,424.0598,1709.0296), (0,66,430.233,1703.6202)]
         self.assertEqual(sql_def.data_from_sql("data/database.db", sql1_command), sql1_data)
+
+
+class TestNormalizationFunctions(unittest.TestCase):
+
+    def test_normalize_point(self):
+        self.assertEqual(normalize_point((10, 20), 10, 20, 90, 80), (0, 0))
+        self.assertEqual(normalize_point((100, 100), 10, 20, 90, 80), (1, 1))
+        self.assertEqual(normalize_point(None, 10, 20, 90, 80), None)
+
+    def test_normalize_points_list(self):
+        self.assertEqual(normalize_points_list([(10, 20), (100, 100)], 10, 20, 90, 80), [(0, 0), (1, 1)])
+        self.assertEqual(normalize_points_list([], 10, 20, 90, 80), [])
+        self.assertEqual(normalize_points_list([None], 10, 20, 90, 80), [None])
+
+    def test_normalize_data(self):
+            data = [[(10, 20), (100, 100)], [(50, 70)]]
+            expected = [[(0, 0), (1, 1)], [(0.4444, 0.625)]]
+            normalized_data, min_x, min_y, range_x, range_y = normalize_data(data)
+            
+            for seq_index, sequence in enumerate(normalized_data):
+                for point_index, point in enumerate(sequence):
+                    with self.subTest(seq_index=seq_index, point_index=point_index):
+                        self.assertAlmostEqual(point[0], expected[seq_index][point_index][0], places=4)
+                        self.assertAlmostEqual(point[1], expected[seq_index][point_index][1], places=4)
+
+    def test_unnormalize_point(self):
+        self.assertEqual(unnormalize_point((0, 0), 10, 20, 90, 80), (10, 20))
+        self.assertEqual(unnormalize_point((1, 1), 10, 20, 90, 80), (100, 100))
+        self.assertEqual(unnormalize_point(None, 10, 20, 90, 80), None)
+
+    def test_unnormalize_points_list(self):
+        self.assertEqual(unnormalize_points_list([(0, 0), (1, 1)], 10, 20, 90, 80), [(10, 20), (100, 100)])
+        self.assertEqual(unnormalize_points_list([], 10, 20, 90, 80), [])
+        self.assertEqual(unnormalize_points_list([None], 10, 20, 90, 80), [None])
+
+    def test_unnormalize_data(self):
+        normalized_data = [[(0, 0), (1, 1)], [(0.4444, 0.625)]]
+        expected = [[(10, 20), (100, 100)], [(49.996, 70)]]
+        unnormalized_data = unnormalize_data(normalized_data, 10, 20, 90, 80)
+        self.assertEqual(unnormalized_data, expected)
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

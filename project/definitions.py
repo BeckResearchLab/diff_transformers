@@ -240,31 +240,6 @@ def plot_points (data, name):
     plt.plot(data, 'o')
     plt.savefig(name)
 
-    
-
-def normalize_data(data, min_x=0, min_y=0, range_x=0, range_y=0):
-    # (x, y) -> needs to be the data, otherwise i gotta rewrite possibly
-    # can assume with none
-    all_points = [point for seq in data for point in seq if point is not None]
-    if range_x or range_y == 0 or min_x == 0 or min_y == 0:
-        all_x = [point[0] for point in all_points]
-        all_y = [point[1] for point in all_points] 
-
-        min_x = min(all_x)
-        max_x = max(all_x)
-        min_y = min(all_y)
-        max_y = max(all_y)
-        range_x = max_x - min_x
-        range_y = max_y - min_y
-
-
-    # Normalize data
-    normalized_data = []
-    for seq in data:
-        normalized_seq = [(float(point[0] - min_x) / range_x, float(point[1] - min_y) / range_y) if point is not None else None for point in seq]
-        normalized_data.append(normalized_seq)
-
-    return normalized_data, min_x, min_y, range_x, range_y
 
 def save_data(filename, data):
     with open(filename, 'w') as file:
@@ -323,6 +298,43 @@ def calculate_mass_alpha(data_with_frame):
         save_data("Full_n.txt", calculate_avg(full_list))
 
 
+# def prepare_data_for_transformer(normalized_data, masked_points):
+#     src_data = []
+#     tgt_data = []
+#     src_masks = []
+
+#     #max_len = max(len(trajectory) for trajectory in normalized_data)
+
+#     for i, trajectory in enumerate(normalized_data):
+#         src_seq = []
+#         src_mask = []
+#         tgt_seq = []
+
+#         masked_value = masked_points[i]
+
+#         for j, point in enumerate(trajectory):
+#             if point is not None:
+#                 src_seq.append(point)
+#                 tgt_seq.append(point)
+#                 src_mask.append((False, False))
+#             else:
+#                 src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
+#                 src_mask.append((True, True))
+#                 tgt_seq.append(masked_value)
+
+#         # while len(src_seq) < max_len:
+#         #     src_seq.append((0.0, 0.0))
+#         #     src_mask.append(False)
+
+#         src_data.append(src_seq)
+#         tgt_data.append(tgt_seq)
+#         src_masks.append(src_mask)
+#     print("hello")
+#     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
+#     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
+#     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
+
+#     return src_data_tensor, tgt_data_tensor, src_masks_tensor
 def prepare_data_for_transformer(normalized_data, masked_points):
     src_data = []
     tgt_data = []
@@ -333,26 +345,23 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     for i, trajectory in enumerate(normalized_data):
         src_seq = []
         src_mask = []
-        tgt_seq = []
 
         masked_value = masked_points[i]
 
         for j, point in enumerate(trajectory):
             if point is not None:
                 src_seq.append(point)
-                tgt_seq.append(point)
-                src_mask.append((False, False))
+                src_mask.append(False)
             else:
                 src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
-                src_mask.append((True, True))
-                tgt_seq.append(masked_value)
+                src_mask.append(True)
 
         # while len(src_seq) < max_len:
         #     src_seq.append((0.0, 0.0))
         #     src_mask.append(False)
 
         src_data.append(src_seq)
-        tgt_data.append(tgt_seq)
+        tgt_data.append(masked_value)
         src_masks.append(src_mask)
     print("hello")
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
@@ -360,3 +369,10 @@ def prepare_data_for_transformer(normalized_data, masked_points):
     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
 
     return src_data_tensor, tgt_data_tensor, src_masks_tensor
+
+
+def compute_accuracy(predictions, targets, threshold=0.01):
+    distances = torch.sqrt(torch.sum((predictions - targets) ** 2, dim=1))
+    accurate_predictions = distances < threshold
+    accuracy = torch.mean(accurate_predictions.float()) * 100
+    return accuracy.item()
