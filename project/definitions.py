@@ -247,22 +247,36 @@ def save_data(filename, data):
             file.write(f"{item}\n")
 
 
-def split_test_train(data, percentOfSplit=90):
+def split_data(data, train_percent=70, val_percent=20):
     """
-    percent of split, like 90-10 or 60-40 and what not given from 0 to 100 as val
+    Splits data into training, validation, and testing sets based on provided percentages.
+    Parameters:
+    - data: The dataset to split.
+    - train_percent: Percentage of data to use for training.
+    - val_percent: Percentage of data to use for validation.
+    Returns:
+    - train: Training set.
+    - val: Validation set.
+    - test: Testing set.
     """
-    test = []
     train = []
+    val = []
+    test = []
 
-    percent = percentOfSplit / 100
-    train_len = math.floor(len(data) * percent)
-    for tracks in data:
-        if train_len > 0:
+    train_len = math.floor(len(data) * train_percent / 100)
+    val_len = math.floor(len(data) * val_percent / 100)
+    test_len = len(data) - train_len - val_len
+
+    for i, tracks in enumerate(data):
+        if i < train_len:
             train.append(tracks)
+        elif i < train_len + val_len:
+            val.append(tracks)
         else:
             test.append(tracks)
-        train_len = train_len - 1
-    return train, test
+
+    return train, val, test
+
 
 
 def calculate_mass_alpha(data_with_frame):
