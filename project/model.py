@@ -51,33 +51,12 @@ class LSTMModel(nn.Module):
         out = self.fc(out)
         return out
 
-
-class TrajectoryTransformer(nn.Module):
-    def __init__(self, input_dim, d_model, n_heads, num_encoder_layers, dropout=0.1):
-        super().__init__()
-        self.input_embedding = nn.Linear(input_dim, d_model)
-        self.position_embedding = nn.Embedding(10, d_model)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=n_heads, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
-        self.output_layer = nn.Linear(d_model, input_dim)
-
-    def forward(self, src, src_key_padding_mask):
-        src = self.input_embedding(src) + self.position_embedding(torch.arange(0, src.size(1), device=src.device))
-        if src_key_padding_mask is not None and src_key_padding_mask.size(1) != src.size(0):
-            src_key_padding_mask = src_key_padding_mask.transpose(0, 1)
-        output = self.transformer_encoder(src, src_key_padding_mask=src_key_padding_mask)
-        return self.output_layer(output[:, 0, :])
-
-
-
-
-
 class EquivariantGraphNN(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, hidden_channels, out_channels):
         super(EquivariantGraphNN, self).__init__()
-        self.conv1 = GCNConv(in_channels, 64)
-        self.conv2 = GCNConv(64, 128)
-        self.conv3 = GCNConv(128, out_channels)
+        self.conv1 = GCNConv(in_channels, hidden_channels)
+        self.conv2 = GCNConv(hidden_channels, hidden_channels)
+        self.conv3 = GCNConv(hidden_channels, out_channels)
 
     def forward(self, x, edge_index):
         x = F.relu(self.conv1(x, edge_index))
@@ -94,22 +73,31 @@ class EquivariantTransformer(nn.Module):
         )
         self.fc_out = nn.Linear(model_dim, output_dim)
 
-    def forward(self, src, tgt, src_mask=None, tgt_mask=None):
+    def forward(self, src, src_mask=None):
         src = self.embedding(src)
-        tgt = self.embedding(tgt)
-        src = src.permute(1, 0, 2)  # (N, S, E) -> (S, N, E) for transformer
-        tgt = tgt.permute(1, 0, 2)  # (N, T, E) -> (T, N, E) for transformer
-        transformer_output = self.transformer(src, tgt, src_mask, tgt_mask)
+        src = src.permute(1, 0, 2) 
+        
+        transformer_output = self.transformer(src, src, src_mask, src_mask)
+        
         output = self.fc_out(transformer_output)
-        return output.permute(1, 0, 2)  # (S, N, E) -> (N, S, E)
+        return output.permute(1, 0, 2)
+
+
+
 
 class SelfSupervisedModel(nn.Module):
-    def __init__(self, in_channels, out_channels, input_dim, model_dim, num_heads, num_layers, output_dim):
+    def __init__(self, in_channels, hidden_channels, out_channels, model_dim, num_heads, num_layers, output_dim):
         super(SelfSupervisedModel, self).__init__()
-        self.gnn = EquivariantGraphNN(in_channels, out_channels)
+        self.gnn = EquivariantGraphNN(in_channels, hidden_channels, out_channels)
         self.transformer = EquivariantTransformer(out_channels, model_dim, num_heads, num_layers, output_dim)
 
-    def forward(self, x, edge_index, src, tgt, src_mask=None, tgt_mask=None):
-        gnn_output = self.gnn(x, edge_index)
-        transformer_output = self.transformer(gnn_output, tgt, src_mask, tgt_mask)
-        return transformer_output
+    def forward(self, x, edge_index, src_mask=None, tgt_mask=None):
+        gnn_output = self.gnn(x, edge_index) 
+        gnn_output = gnn_output.permute(1, 0, 2)
+        
+        transformer_output = self.transformer(gnn_output, src_mask)
+        transformer_output = transformer_output.permute(1, 0, 2) 
+        
+        return transformer_output[:, -1, :]
+
+
