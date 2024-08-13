@@ -58,11 +58,13 @@ class EquivariantGraphNN(nn.Module):
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
         self.conv3 = GCNConv(hidden_channels, out_channels)
 
-    def forward(self, x, edge_index):
-        x = F.relu(self.conv1(x, edge_index))
-        x = F.relu(self.conv2(x, edge_index))
-        x = self.conv3(x, edge_index)
+    def forward(self, x, edge_index, edge_weight=None):
+        x = F.relu(self.conv1(x, edge_index, edge_weight))
+        x = F.relu(self.conv2(x, edge_index, edge_weight))
+        x = self.conv3(x, edge_index, edge_weight)
         return x
+
+
 
 class EquivariantTransformer(nn.Module):
     def __init__(self, input_dim, model_dim, num_heads, num_layers, output_dim):
@@ -91,13 +93,11 @@ class SelfSupervisedModel(nn.Module):
         self.gnn = EquivariantGraphNN(in_channels, hidden_channels, out_channels)
         self.transformer = EquivariantTransformer(out_channels, model_dim, num_heads, num_layers, output_dim)
 
-    def forward(self, x, edge_index, src_mask=None, tgt_mask=None):
-        gnn_output = self.gnn(x, edge_index) 
+    def forward(self, x, edge_index, edge_weight=None, src_mask=None, tgt_mask=None):
+        gnn_output = self.gnn(x, edge_index, edge_weight)  # Pass edge weights here
         gnn_output = gnn_output.permute(1, 0, 2)
-        
         transformer_output = self.transformer(gnn_output, src_mask)
-        transformer_output = transformer_output.permute(1, 0, 2) 
-        
+        transformer_output = transformer_output.permute(1, 0, 2)
         return transformer_output[:, -1, :]
 
 
