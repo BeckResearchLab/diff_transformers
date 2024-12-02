@@ -4,6 +4,7 @@ import math
 import random 
 import matplotlib.pyplot as plt
 import torch
+from torch_geometric.data import Data, Batch
 
 ## local package import ##
 import HelperFunctions.data_manipulation as dm

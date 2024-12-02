@@ -31,6 +31,8 @@ MAX_VALUE_TRAJECTORIES_LENGTH = 25
 RANDOM_TRACK = False
 RANDOM_MASKING = False
 MASKING_INDEX = 5
+HYPERTUNNING = False
+FREQ_PRINT = 1
 
 ## <---- CUDA CHECK ----> ##
 if torch.cuda.is_available():
@@ -110,3 +112,53 @@ val_dataset = TensorDataset(val_src_data_tensor, val_tgt_data_tensor, val_src_ma
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=True)
 
 print(f"Starting Training with Train batch size of {train_dataloader.batch_size} and Val batch size of {val_dataloader.batch_size}")
+
+## <---- MODEL ITTERATION NORMAL----> ##
+n_iters = 1
+loss_values = []
+val_loss_values = []
+
+print(f"Starting Normal Training with following information: Number of Iter: {n_iters}")
+for epoch in range(n_iters):
+    model.train()
+    total_loss = 0
+    torch.cuda.empty_cache()
+    
+    # TRAINING
+    for src, tgt, mask, padding_mask in train_dataloader:
+        src, tgt, mask, padding_mask = src.to(device), tgt.to(device), mask.to(device), padding_mask.to(device)
+        graph_batch, src_mask_batch = df.prepare_graph_data_for_batch(src.cpu().numpy(), mask.cpu().numpy(), padding_mask.cpu().numpy())
+        graph_batch = graph_batch.to(device)
+        src_mask_batch = src_mask_batch.to(device)
+        optimizer.zero_grad()
+        output = model(graph_batch, src_mask=src_mask_batch, padding_mask=padding_mask)
+        loss = LM.masked_loss(output, tgt, padding_mask, loss_function)
+        loss.backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+        total_loss += loss.item()
+        del src, tgt, mask, padding_mask, graph_batch, src_mask_batch, output, loss
+        torch.cuda.empty_cache()
+    avg_loss = total_loss / len(train_dataloader)
+    loss_values.append(avg_loss)
+    
+    # VALIDATION 
+    model.eval()
+    val_total_loss = 0
+    with torch.no_grad():
+        for src, tgt, mask, padding_mask in val_dataloader:
+            src, tgt, mask, padding_mask = src.to(device), tgt.to(device), mask.to(device), padding_mask.to(device)
+            graph_batch, src_mask_batch = df.prepare_graph_data_for_batch(src.cpu().numpy(), mask.cpu().numpy(), padding_mask.cpu().numpy())
+            graph_batch = graph_batch.to(device)
+            src_mask_batch = src_mask_batch.to(device)
+            optimizer.zero_grad()
+            output = model(graph_batch, src_mask=src_mask_batch, padding_mask=padding_mask)
+            val_loss = LM.masked_loss(output, tgt, padding_mask, loss_function)
+
+            val_total_loss += val_loss.item()
+    avg_val_loss = val_total_loss / len(val_dataloader)
+    val_loss_values.append(avg_val_loss)
+    
+    if epoch % FREQ_PRINT == 0:
+        print(f'Epoch {epoch+1}/{n_iters}, Training Loss: {avg_loss:.8f}, Validation Loss: {avg_val_loss:.8f}')
+    scheduler.step(avg_val_loss)
