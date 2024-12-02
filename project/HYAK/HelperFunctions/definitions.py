@@ -311,78 +311,42 @@ def calculate_mass_alpha(data_with_frame):
         save_data("finalResult.txt", final_result)
         save_data("Full_n.txt", calculate_avg(full_list))
 
-
-# def prepare_data_for_transformer(normalized_data, masked_points):
-#     src_data = []
-#     tgt_data = []
-#     src_masks = []
-
-#     #max_len = max(len(trajectory) for trajectory in normalized_data)
-
-#     for i, trajectory in enumerate(normalized_data):
-#         src_seq = []
-#         src_mask = []
-#         tgt_seq = []
-
-#         masked_value = masked_points[i]
-
-#         for j, point in enumerate(trajectory):
-#             if point is not None:
-#                 src_seq.append(point)
-#                 tgt_seq.append(point)
-#                 src_mask.append((False, False))
-#             else:
-#                 src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
-#                 src_mask.append((True, True))
-#                 tgt_seq.append(masked_value)
-
-#         # while len(src_seq) < max_len:
-#         #     src_seq.append((0.0, 0.0))
-#         #     src_mask.append(False)
-
-#         src_data.append(src_seq)
-#         tgt_data.append(tgt_seq)
-#         src_masks.append(src_mask)
-#     print("hello")
-#     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
-#     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
-#     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
-
-#     return src_data_tensor, tgt_data_tensor, src_masks_tensor
-def prepare_data_for_transformer(normalized_data, masked_points):
+def prepare_data_for_transformer_with_padding(normalized_data, masked_points, MAX_VALUE_TRAJECTORIES_LENGTH):
     src_data = []
     tgt_data = []
     src_masks = []
 
-    #max_len = max(len(trajectory) for trajectory in normalized_data)
-
     for i, trajectory in enumerate(normalized_data):
         src_seq = []
         src_mask = []
+        src_tgt = []
 
         masked_value = masked_points[i]
 
         for j, point in enumerate(trajectory):
             if point is not None:
                 src_seq.append(point)
-                src_mask.append(False)
+                src_mask.append(False)  # Not masked
+                src_tgt.append(point)
             else:
-                src_seq.append((0,0)) ## puting it as None, does not let us convert to tensor, what should we do intead?
-                src_mask.append(True)
-
-        # while len(src_seq) < max_len:
-        #     src_seq.append((0.0, 0.0))
-        #     src_mask.append(False)
+                src_seq.append((0, 0))  # Placeholder for masked point
+                src_mask.append(True)   # Masked
+                src_tgt.append(masked_value)
 
         src_data.append(src_seq)
-        tgt_data.append(masked_value)
+        tgt_data.append(src_tgt)
         src_masks.append(src_mask)
-    print("hello")
+    padding_mask_tensor = torch.tensor(pad_mask(src_data, MAX_VALUE_TRAJECTORIES_LENGTH), dtype=torch.bool)
+    src_data = pad_track(src_data, MAX_VALUE_TRAJECTORIES_LENGTH)
+    tgt_data = pad_track(tgt_data, MAX_VALUE_TRAJECTORIES_LENGTH)
+    src_masks = pad_track(src_masks, MAX_VALUE_TRAJECTORIES_LENGTH, pad_value=False)
+
     src_data_tensor = torch.tensor(src_data, dtype=torch.float32)
     tgt_data_tensor = torch.tensor(tgt_data, dtype=torch.float32)
     src_masks_tensor = torch.tensor(src_masks, dtype=torch.bool)
 
-    return src_data_tensor, tgt_data_tensor, src_masks_tensor
+    return src_data_tensor, tgt_data_tensor, src_masks_tensor, padding_mask_tensor
+
 
 
 def compute_accuracy(predictions, targets, threshold=0.01):
@@ -390,3 +354,182 @@ def compute_accuracy(predictions, targets, threshold=0.01):
     accurate_predictions = distances < threshold
     accuracy = torch.mean(accurate_predictions.float()) * 100
     return accuracy.item()
+
+def shift_to_origin(data):
+    """
+    Shifts sequences of points so that each sequence starts at (0, 0).
+
+    Parameters:
+        data (list): List of sequences, where each sequence is a list of (x, y) tuples.
+
+    Returns:
+        list: A list of sequences where each sequence is shifted to start at (0, 0).
+    """
+    shifted_data = []
+    for seq in data:
+        if seq[0] is not None:
+            first_point = seq[0]
+            shifted_seq = [(point[0] - first_point[0], point[1] - first_point[1]) for point in seq if point is not None]
+            shifted_data.append(shifted_seq)
+    return shifted_data
+
+def pad_track(data, max, pad_value=(0,0)):
+    """
+    pads to the given max length
+
+    Parameters:
+    data (list): the list of all trajectories
+    max (int): the maximum length of the list
+
+    Returns:
+    int: minimum length of the list
+    """
+    if (len(data) == 0):
+        return 0
+    final_data = []
+    for lst in data:
+        length = len(lst);
+        data_lst = [];
+        for i in range(length):
+            data_lst.append(lst[i])
+        for i in range(length, max):
+            data_lst.append(pad_value)
+        final_data.append(data_lst)
+
+    return final_data
+
+def pad_mask(data, max):
+    """
+    pads blueprint to the given max length
+
+    Parameters:
+    data (list): the list of all trajectories
+    max (int): the maximum length of the list
+
+    Returns:
+    int: minimum length of the list
+    """
+    mask = []
+    for lst in data:
+        padding_mask = [False] * len(lst) + [True] * (max - len(lst))
+        mask.append(padding_mask)
+    print(len(mask))
+    print(len(mask[0]))
+    return mask
+
+def calculate_accuracy_with_tolerance(data, tg, bp, tolerance=10):
+    correct = 0
+    total = 0
+
+    for i, (seq, mask_seq, target_seq) in enumerate(zip(data, bp, tg)):
+        target_index = 0
+        for j, (mask, pred) in enumerate(zip(mask_seq, seq)):
+            if mask:
+                if target_index < len(target_seq):
+                    target = target_seq
+                    total += 1
+                    if abs(pred[0] - target[0]) <= tolerance and abs(pred[1] - target[1]) <= tolerance:
+                        correct += 1
+                    target_index += 1
+                else:
+                    print("Warning")
+    if total == 0:
+        return 0  # Avoid division by zero
+    accuracy = (correct / total) * 100
+    return accuracy
+
+def create_edge_index_basic(num_points, connectivity_range=2):
+    """
+    The basic version of the edge index creation. This only connects a single point to its connectivity_rangeth
+    nodes. It stops connecting before 0 and after max points.
+    Parameters:
+        num_points (number): number of points in a single trajectory.
+        connectivity_range (number): number of edges from a node to each side.
+
+    Returns:
+        edge_index: a list that has the connections
+        edge_weight: a list with the weights of each edge
+    """
+    row = []
+    col = []
+    weights = []
+
+    for i in range(num_points):
+        for j in range(max(0, i-connectivity_range), min(num_points, i+connectivity_range+1)):
+            if i != j:
+                row.append(i)
+                col.append(j)
+                weight = 1 / abs(i - j)
+                weights.append(weight)
+
+    edge_index = torch.tensor([row, col], dtype=torch.long)
+    edge_weight = torch.tensor(weights, dtype=torch.float)
+    return edge_index, edge_weight
+
+
+def create_edge_index_with_distance(points, padding_mask):
+    """
+    This function creates an edge index and computes the Euclidean distances between all non-padded points.
+
+    :param points: List of points (2D coordinates)
+    :param padding_mask: Boolean mask indicating which points are valid (True for valid points, False for padded points)
+    :return: edge_index, edge_weight (both as torch tensors)
+    """
+    padding_mask = padding_mask.tolist()
+
+    points = [tuple(point) for point in points]
+    valid_points = []
+    for point, valid in zip(points, padding_mask):
+      if not bool(valid):
+          valid_points.append(point)
+    if len(valid_points) == 0:
+        return torch.empty((2, 0), dtype=torch.long), torch.empty(0, dtype=torch.float32)
+
+    points_tensor = torch.tensor(valid_points, dtype=torch.float32)
+
+    diff = points_tensor.unsqueeze(0) - points_tensor.unsqueeze(1)
+    distances = torch.norm(diff, dim=-1)
+
+    n_valid = len(valid_points)
+    row, col = torch.triu_indices(n_valid, n_valid, offset=1)
+
+    edge_index = torch.stack([row, col], dim=0)
+    edge_weight = distances[row, col]
+
+    return edge_index, edge_weight
+
+def prepare_graph_data_for_batch(normalized_data, masked_points, padding_masks):
+    """
+    This function prepares batched graph data for PyTorch Geometric, taking into account padding.
+
+    :param normalized_data: List of trajectories (each trajectory is a list of points)
+    :param masked_points: List of masked points for each trajectory
+    :param padding_masks: List of padding masks for each trajectory
+    :return: A batched graph and padding mask
+    """
+    data_list = []
+    src_mask_list = []
+
+    for i, trajectory in enumerate(normalized_data):
+        padding_mask = padding_masks[i]
+        src_seq = []
+        src_mask = []
+
+        for j, point in enumerate(trajectory):
+            if padding_mask[j]:
+                src_seq.append(point)
+                src_mask.append(False)
+            else:
+                src_seq.append((0, 0))  # Placeholder for masked points
+                src_mask.append(True)
+
+        edge_index, edge_weight = create_edge_index_with_distance(src_seq, padding_mask)
+        src_seq_tensor = torch.tensor(src_seq, dtype=torch.float32)
+        src_mask_tensor = torch.tensor(src_mask, dtype=torch.bool)
+
+        graph_data = Data(x=src_seq_tensor, edge_index=edge_index, edge_weight=edge_weight)
+        data_list.append(graph_data)
+        src_mask_list.append(src_mask_tensor)
+
+    src_mask_batch = torch.stack(src_mask_list)
+    return Batch.from_data_list(data_list), src_mask_batch

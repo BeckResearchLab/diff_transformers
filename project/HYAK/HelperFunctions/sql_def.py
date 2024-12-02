@@ -1,4 +1,5 @@
 import sqlite3
+import random
 
 def data_from_sql(database, command):
     """
@@ -18,3 +19,32 @@ def data_from_sql(database, command):
     data = cursor.fetchall()
     conn.close()
     return data
+
+def Extractions(trajectories, random_interval=False, max_length=9):
+    """
+    Extracts subsets from a list of trajectories.
+    
+    Parameters:
+    - trajectories: list of lists containing the trajectory data.
+    - random_interval: Boolean, if True, randomly selects the starting point for the subset.
+    - max_length: Maximum length of each subset.
+
+    Returns:
+    - A list of extracted subsets.
+    """
+    extracted_trajectories = []
+
+    for temp in trajectories:
+        if random_interval:
+            if len(temp) > max_length:
+                start_index = random.randint(0, len(temp) - max_length)
+            else:
+                start_index = 0
+        else:
+            start_index = 0
+
+        end_index = start_index + max_length
+        extracted_trajectories.append(temp[start_index:end_index])
+
+    return extracted_trajectories
+    
