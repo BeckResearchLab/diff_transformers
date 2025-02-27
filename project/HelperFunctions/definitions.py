@@ -9,6 +9,10 @@ from torch_geometric.data import Data, Batch
 ## local package import ##
 import HelperFunctions.data_manipulation as dm
 import HelperFunctions.plots
+import HelperFunctions.msd as msd
+import HelperFunctions.features as ft
+import pandas as pd
+
 
 def add(a, b):
     return a + b
@@ -418,6 +422,21 @@ def pad_mask(data, max):
     print(len(mask[0]))
     return mask
 
+
+def unpad(data, mask):
+    """
+    Takes in list
+    """
+    temp_pred = []
+    for elem, mask_pad in zip(data, mask):
+        temp_track = []
+        for elem1, mask_elem1 in zip(elem, mask_pad):
+            if not mask_elem1:
+              temp_track.append(elem1)
+        temp_pred.append(temp_track)
+    return temp_pred
+
+
 def calculate_accuracy_with_tolerance(data, tg, bp, tolerance=10):
     correct = 0
     total = 0
@@ -468,69 +487,116 @@ def create_edge_index_basic(num_points, connectivity_range=2):
     return edge_index, edge_weight
 
 
-def create_edge_index_with_distance(points, padding_mask):
-    """
-    This function creates an edge index and computes the Euclidean distances between all non-padded points.
+def create_edge_index_with_distance(points):
+    points = torch.tensor(points, dtype=torch.float32)  # Convert list to tensor
 
-    :param points: List of points (2D coordinates)
-    :param padding_mask: Boolean mask indicating which points are valid (True for valid points, False for padded points)
-    :return: edge_index, edge_weight (both as torch tensors)
-    """
-    padding_mask = padding_mask.tolist()
+    num_points = points.shape[0]
+    row, col = torch.meshgrid(torch.arange(num_points), torch.arange(num_points), indexing="ij")
 
-    points = [tuple(point) for point in points]
-    valid_points = []
-    for point, valid in zip(points, padding_mask):
-      if not bool(valid):
-          valid_points.append(point)
-    if len(valid_points) == 0:
-        return torch.empty((2, 0), dtype=torch.long), torch.empty(0, dtype=torch.float32)
+    mask = row != col  # Exclude self-loops
+    row, col = row[mask], col[mask]  # Apply mask to remove diagonal elements
 
-    points_tensor = torch.tensor(valid_points, dtype=torch.float32)
+    # Compute Euclidean distances efficiently
+    diff = points[row] - points[col]
+    edge_weight = torch.norm(diff, dim=1)
 
-    diff = points_tensor.unsqueeze(0) - points_tensor.unsqueeze(1)
-    distances = torch.norm(diff, dim=-1)
-
-    n_valid = len(valid_points)
-    row, col = torch.triu_indices(n_valid, n_valid, offset=1)
-
-    edge_index = torch.stack([row, col], dim=0)
-    edge_weight = distances[row, col]
+    edge_index = torch.stack([row, col], dim=0)  # Shape (2, num_edges)
 
     return edge_index, edge_weight
 
-def prepare_graph_data_for_batch(normalized_data, masked_points, padding_masks):
-    """
-    This function prepares batched graph data for PyTorch Geometric, taking into account padding.
-
-    :param normalized_data: List of trajectories (each trajectory is a list of points)
-    :param masked_points: List of masked points for each trajectory
-    :param padding_masks: List of padding masks for each trajectory
-    :return: A batched graph and padding mask
-    """
+def prepare_graph_data_for_batch(normalized_data, masked_points):
     data_list = []
     src_mask_list = []
 
     for i, trajectory in enumerate(normalized_data):
-        padding_mask = padding_masks[i]
         src_seq = []
         src_mask = []
 
-        for j, point in enumerate(trajectory):
-            if padding_mask[j]:
+        for point in trajectory:
+            # Ensure point is converted to a tuple or array for comparison
+            point = tuple(point)
+            # Check if the point is (0, 0)
+            if not np.all(np.isclose(point, (0, 0))):  # Valid points
                 src_seq.append(point)
-                src_mask.append(False)
+                src_mask.append(False)  # Not masked
             else:
                 src_seq.append((0, 0))  # Placeholder for masked points
-                src_mask.append(True)
+                src_mask.append(True)   # Masked point
 
-        edge_index, edge_weight = create_edge_index_with_distance(src_seq, padding_mask)
+        # Convert the trajectory to a graph
+        edge_index, edge_weight = create_edge_index_with_distance(src_seq)
+
+        # Convert data to tensors
         src_seq_tensor = torch.tensor(src_seq, dtype=torch.float32)
         src_mask_tensor = torch.tensor(src_mask, dtype=torch.bool)
 
+        # Create a PyTorch Geometric Data object for the graph
         graph_data = Data(x=src_seq_tensor, edge_index=edge_index, edge_weight=edge_weight)
         data_list.append(graph_data)
         src_mask_list.append(src_mask_tensor)
 
+    # Stack the masks into a batch of shape [batch_size, sequence_length]
     src_mask_batch = torch.stack(src_mask_list)
+
     return Batch.from_data_list(data_list), src_mask_batch
+
+def dataFixer(AllTracks, torch=True):
+    """
+    data = [[],[],[]]
+    """
+    All_tracks_records = []
+    for oneTrack in AllTracks:
+        x_value = []
+        y_value = []
+        frame = np.linspace(1, len(oneTrack), len(oneTrack));
+        for onePoint in oneTrack:
+            onePointList = onePoint
+            if torch:
+                onePointList = onePoint.tolist();
+            x_value.append(onePointList[0])
+            y_value.append(onePointList[1])
+        data_one_track = {'Frame': frame, 'X': x_value, 'Y': y_value}
+        All_tracks_records.append(data_one_track)
+    return All_tracks_records
+
+
+def calculate_mse(output_list, tgt_list):
+    if len(output_list) != len(tgt_list):
+        raise ValueError("output_list and tgt_list must have the same length")
+    
+    total_error = 0
+    n = len(output_list)
+    
+    for pred, target in zip(output_list, tgt_list):
+        total_error += (pred - target) ** 2
+    
+    mse = total_error / n if n > 0 else 0
+    return mse
+
+
+
+def diff_accuracy(Predictions, padding_mask, target):
+
+    pred_track = unpad(Predictions, padding_mask);
+    tgt_track = unpad(target, padding_mask);
+
+    dataForMSD_PRED = dataFixer(pred_track, False)
+    dataForMSD_TGT = dataFixer(tgt_track, False)
+
+    output_list = []
+    tgt_list = []
+    for data in dataForMSD_PRED:
+        dframe = pd.DataFrame(data=data)
+        dframe = msd.msd_calc(dframe, len(data))
+        res, trash = ft.alpha_calc(dframe)
+        output_list.append(res)
+    for data1 in dataForMSD_TGT:
+        dframe1 = pd.DataFrame(data=data1)
+        dframe1 = msd.msd_calc(dframe1, len(data))
+        res1, trash1 = ft.alpha_calc(dframe1)
+        tgt_list.append(res1)
+    
+    return calculate_weighted_mse(output_list, tgt_list)
+
+
+    
